@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 3
+## Current Step: 4
 
 ## In Progress
 
@@ -92,7 +92,7 @@ After completing your step, you MUST:
 ### Phase 1: Setup
 - [x] 1. Create directories: `server/`, `server/static/`, `server/db/`, `extension/`, `extension/icons/`
 - [x] 2. Create `.env.example`, `.gitignore`, `docker-compose.yml`
-- [ ] 3. Create `server/requirements.txt`, `server/Dockerfile`
+- [x] 3. Create `server/requirements.txt`, `server/Dockerfile`
 
 ### Phase 2: Server Core
 - [ ] 4. Create `server/db/schema.sql` (downloads + settings tables)
@@ -133,6 +133,7 @@ After completing your step, you MUST:
 |------|---------------|
 | 1 | Created project directory structure: server/ with static/ and db/ subdirectories, extension/ with icons/ subdirectory. All directories created using mkdir -p on Windows. |
 | 2 | Created .env.example with all environment variables (API_KEY, PORT, ALLOWED_ORIGINS, etc.). Updated existing .gitignore to add project-specific ignores (downloads/, data/, *.db). Created docker-compose.yml with service definition, volume mounts, and environment variable passing. |
+| 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 5000. |
 
 ---
 
