@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 18 <!-- CURRENT-STEP -->
+## Current Step: 19 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -164,7 +164,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 15. Fix and test rate limiting (ensure accurate throttling at various speeds)
 - [x] 16. Test and fix pause/resume behavior (individual downloads and global pause)
 - [x] 17. Improve download status display (queued/downloading/paused/completed/failed states)
-- [ ] 18. Fix progress bar display (currently shows 0.00/0.00 MB even during/after download)
+- [x] 18. Fix progress bar display (currently shows 0.00/0.00 MB even during/after download)
 - [ ] 19. Fix progress data updates (downloaded_bytes, total_bytes, percentage not displaying)
 - [ ] 20. Add error handling and user feedback (better alerts, status messages, validation)
 
@@ -223,6 +223,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 |------|---------------|
 | 17 | Improve download status display (queued/downloading/paused/completed/failed states) |
 | 18 | Restructured project phases based on UX/UI assessment. Split original Phase 5 into 6 focused phases: Phase 5 (Critical UI Bug Fixes - progress bar display), Phase 6 (Multi-User Real-Time Sync - settings broadcast), Phase 7 (Folder Management Interface - browser UI), Phase 8 (Download File Management - in-progress extensions), Phase 9 (Testing & Edge Cases), Phase 10 (UI Polish). Renumbered Chrome Extension to Phase 11 and Finalize to Phase 12. Total checklist now has 50 steps instead of 28. |
+| 18 | Fixed progress bar display by updating app.js to access nested progress object (download.progress.downloaded_bytes, etc.). Added lightning bolt icon to download speed display and show last speed for paused downloads. |
 <!-- CONTEXT-END -->
 
 ---

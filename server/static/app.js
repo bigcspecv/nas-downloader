@@ -88,18 +88,18 @@ function renderDownloads() {
     }
 
     container.innerHTML = downloads.map(download => {
-        // Handle null/undefined bytes to avoid NaN
-        const downloadedBytes = download.downloaded_bytes || 0;
-        const totalBytes = download.total_bytes || 0;
+        // Access progress data from nested object
+        const progress = download.progress || {};
+        const downloadedBytes = progress.downloaded_bytes || 0;
+        const totalBytes = progress.total_bytes || 0;
+        const percentage = progress.percentage || 0;
+        const speedBps = progress.speed_bps || 0;
+        const etaSeconds = progress.eta_seconds || 0;
 
-        const percentage = totalBytes > 0
-            ? (downloadedBytes / totalBytes * 100).toFixed(1)
-            : 0;
-
-        const speedMBps = download.speed_bps ? (download.speed_bps / 1048576).toFixed(2) : '0.00';
+        const speedMBps = (speedBps / 1048576).toFixed(2);
         const downloadedMB = (downloadedBytes / 1048576).toFixed(2);
         const totalMB = (totalBytes / 1048576).toFixed(2);
-        const eta = formatETA(download.eta_seconds);
+        const eta = formatETA(etaSeconds);
 
         let progressClass = '';
         if (download.status === 'completed') progressClass = 'completed';
@@ -137,7 +137,11 @@ function renderDownloads() {
                             ${downloadedMB} / ${totalMB} MB (${percentage}%)
                         </span>
                         <span>
-                            ${download.status === 'downloading' ? `${speedMBps} MB/s • ETA: ${eta}` : ''}
+                            ${download.status === 'downloading' ?
+                                `${speedMBps} MB/s • ETA: ${eta}` :
+                                (download.status === 'paused' && speedBps > 0) ?
+                                `Last speed: ${speedMBps} MB/s` :
+                                ''}
                         </span>
                     </div>
                 </div>
