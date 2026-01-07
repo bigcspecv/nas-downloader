@@ -191,15 +191,86 @@ def create_folder():
 @app.route('/api/settings', methods=['GET'])
 @require_auth
 def get_settings():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+    """Get all settings as a JSON object"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get all settings
+        cursor.execute("SELECT key, value FROM settings")
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Convert to dictionary
+        settings = {row['key']: row['value'] for row in rows}
+
+        return jsonify(settings), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to retrieve settings: {str(e)}'}), 500
 
 
 @app.route('/api/settings', methods=['PATCH'])
 @require_auth
 def update_settings():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+    """Update one or more settings (partial update)"""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+
+    # List of valid setting keys
+    valid_keys = {'global_rate_limit_bps', 'max_concurrent_downloads'}
+
+    # Validate all keys are allowed
+    invalid_keys = set(data.keys()) - valid_keys
+    if invalid_keys:
+        return jsonify({'error': f'Invalid setting keys: {", ".join(invalid_keys)}'}), 400
+
+    # Validate values (all settings should be numeric strings)
+    for key, value in data.items():
+        # Ensure value is a string and can be converted to int
+        try:
+            if not isinstance(value, (str, int)):
+                return jsonify({'error': f'Setting {key} must be a string or integer'}), 400
+
+            # Convert to int to validate it's numeric
+            int_value = int(value)
+
+            # Validate specific constraints
+            if key == 'global_rate_limit_bps' and int_value < 0:
+                return jsonify({'error': 'global_rate_limit_bps must be >= 0'}), 400
+
+            if key == 'max_concurrent_downloads' and int_value < 1:
+                return jsonify({'error': 'max_concurrent_downloads must be >= 1'}), 400
+
+        except ValueError:
+            return jsonify({'error': f'Setting {key} must be a valid integer'}), 400
+
+    # Update settings in database
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        for key, value in data.items():
+            # Convert to string for storage
+            value_str = str(value)
+            cursor.execute(
+                "UPDATE settings SET value = ? WHERE key = ?",
+                (value_str, key)
+            )
+
+        conn.commit()
+
+        # Return updated settings
+        cursor.execute("SELECT key, value FROM settings")
+        rows = cursor.fetchall()
+        conn.close()
+
+        settings = {row['key']: row['value'] for row in rows}
+        return jsonify(settings), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
 
 
 # Download endpoints (Step 10)
