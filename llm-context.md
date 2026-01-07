@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 1
+## Current Step: 3
 
 ## In Progress
 
@@ -90,8 +90,8 @@ After completing your step, you MUST:
 ## Checklist
 
 ### Phase 1: Setup
-- [ ] 1. Create directories: `server/`, `server/static/`, `server/db/`, `extension/`, `extension/icons/`
-- [ ] 2. Create `.env.example`, `.gitignore`, `docker-compose.yml`
+- [x] 1. Create directories: `server/`, `server/static/`, `server/db/`, `extension/`, `extension/icons/`
+- [x] 2. Create `.env.example`, `.gitignore`, `docker-compose.yml`
 - [ ] 3. Create `server/requirements.txt`, `server/Dockerfile`
 
 ### Phase 2: Server Core
@@ -131,7 +131,8 @@ After completing your step, you MUST:
 
 | Step | What happened |
 |------|---------------|
-| - | No work started yet |
+| 1 | Created project directory structure: server/ with static/ and db/ subdirectories, extension/ with icons/ subdirectory. All directories created using mkdir -p on Windows. |
+| 2 | Created .env.example with all environment variables (API_KEY, PORT, ALLOWED_ORIGINS, etc.). Updated existing .gitignore to add project-specific ignores (downloads/, data/, *.db). Created docker-compose.yml with service definition, volume mounts, and environment variable passing. |
 
 ---
 
@@ -196,5 +197,6 @@ None.
 5. Security: validate all paths, sanitize inputs
 6. No over-engineering - build only what's needed
 7. If stuck, document the blocker and stop
+8. After completing each step, prompt the user to commit with a short single-line commit message
 
 ---
