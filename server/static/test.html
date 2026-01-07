@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Manager - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4CAF50;
+        }
+
+        .config-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h2 {
+            margin-bottom: 15px;
+            color: #64B5F6;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        label {
+            min-width: 100px;
+        }
+
+        input {
+            flex: 1;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        .test-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .test-section h2 {
+            margin-bottom: 15px;
+            color: #64B5F6;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .test-result {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status.error {
+            background: #f44336;
+            color: white;
+        }
+
+        .status.info {
+            background: #2196F3;
+            color: white;
+        }
+
+        .ws-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .ws-status.connected {
+            background: #4CAF50;
+        }
+
+        .ws-status.disconnected {
+            background: #f44336;
+        }
+
+        #wsMessages {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .message {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .timestamp {
+            color: #888;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Download Manager - Test Suite</h1>
+
+        <!-- Configuration -->
+        <div class="config-section">
+            <h2>Configuration</h2>
+            <div class="config-row">
+                <label>API URL:</label>
+                <input type="text" id="apiUrl" value="http://localhost:5000">
+            </div>
+            <div class="config-row">
+                <label>API Key:</label>
+                <input type="text" id="apiKey" value="your-secret-key-here">
+            </div>
+        </div>
+
+        <!-- Authentication Tests -->
+        <div class="test-section">
+            <h2>1. Authentication Tests</h2>
+            <div class="test-buttons">
+                <button onclick="testValidAuth()">Test Valid Auth</button>
+                <button onclick="testInvalidAuth()">Test Invalid Auth</button>
+            </div>
+            <div class="test-result" id="authResult"></div>
+        </div>
+
+        <!-- Folder Tests -->
+        <div class="test-section">
+            <h2>2. Folder Management Tests</h2>
+            <div class="test-buttons">
+                <button onclick="testGetFolders()">GET /api/folders</button>
+                <button onclick="testCreateFolder()">POST /api/folders (create test_folder)</button>
+                <button onclick="testPathTraversal()">Test Path Traversal Protection</button>
+            </div>
+            <div class="test-result" id="folderResult"></div>
+        </div>
+
+        <!-- Settings Tests -->
+        <div class="test-section">
+            <h2>3. Settings Tests</h2>
+            <div class="test-buttons">
+                <button onclick="testGetSettings()">GET /api/settings</button>
+                <button onclick="testUpdateSettings()">PATCH /api/settings (rate limit: 1MB/s)</button>
+                <button onclick="testInvalidSettings()">Test Invalid Setting Validation</button>
+            </div>
+            <div class="test-result" id="settingsResult"></div>
+        </div>
+
+        <!-- Download Tests -->
+        <div class="test-section">
+            <h2>4. Download Tests</h2>
+            <div class="test-buttons">
+                <button onclick="testGetDownloads()">GET /api/downloads</button>
+                <button onclick="testCreateDownload()">POST /api/downloads (test file)</button>
+                <button onclick="testPauseDownload()">PATCH /api/downloads/:id (pause)</button>
+                <button onclick="testResumeDownload()">PATCH /api/downloads/:id (resume)</button>
+                <button onclick="testDeleteDownload()">DELETE /api/downloads/:id (remove from manager)</button>
+                <button onclick="testDeleteDownloadWithFile()">DELETE /api/downloads/:id?delete_file=true</button>
+                <button onclick="testPauseAll()">POST /api/downloads/pause-all</button>
+                <button onclick="testResumeAll()">POST /api/downloads/resume-all</button>
+            </div>
+            <div class="test-result" id="downloadResult"></div>
+        </div>
+
+        <!-- WebSocket Tests -->
+        <div class="test-section">
+            <h2>5. WebSocket Tests</h2>
+            <div style="margin-bottom: 15px;">
+                Status: <span class="ws-status" id="wsStatusDot"></span>
+                <span id="wsStatusText">Disconnected</span>
+            </div>
+            <div class="test-buttons">
+                <button onclick="testWsConnect()">Connect WebSocket</button>
+                <button onclick="testWsInvalidAuth()">Test Invalid Auth</button>
+                <button onclick="testWsSendMessage()">Send Test Message</button>
+                <button onclick="testWsDisconnect()">Disconnect</button>
+            </div>
+            <div class="test-result" id="wsMessages"></div>
+        </div>
+
+        <!-- Run All Tests -->
+        <div class="test-section">
+            <h2>Run All Tests</h2>
+            <div class="test-buttons">
+                <button onclick="runAllTests()" style="background: #FF9800;">Run All Tests (Sequential)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let testDownloadId = null;
+
+        function getHeaders() {
+            return {
+                'Authorization': `Bearer ${document.getElementById('apiKey').value}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value;
+        }
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const statusClass = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<div class="message"><span class="timestamp">[${timestamp}]</span> <span class="status ${statusClass}">${type.toUpperCase()}</span> ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clear(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Authentication Tests
+        async function testValidAuth() {
+            clear('authResult');
+            log('authResult', 'Testing valid authentication...', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    headers: getHeaders()
+                });
+                if (response.ok) {
+                    log('authResult', 'Valid authentication successful!', 'success');
+                    log('authResult', `Response: ${await response.text()}`, 'info');
+                } else {
+                    log('authResult', `Failed with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('authResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidAuth() {
+            clear('authResult');
+            log('authResult', 'Testing invalid authentication...', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    headers: {
+                        'Authorization': 'Bearer invalid-key',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.status === 401) {
+                    log('authResult', 'Correctly rejected invalid auth!', 'success');
+                    log('authResult', `Response: ${await response.text()}`, 'info');
+                } else {
+                    log('authResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('authResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Folder Tests
+        async function testGetFolders() {
+            clear('folderResult');
+            log('folderResult', 'GET /api/folders', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/folders`, {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('folderResult', 'Success!', 'success');
+                    log('folderResult', `Folders: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('folderResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('folderResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateFolder() {
+            clear('folderResult');
+            log('folderResult', 'POST /api/folders (creating test_folder)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/folders`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ path: 'test_folder_' + Date.now() })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('folderResult', 'Folder created successfully!', 'success');
+                    log('folderResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('folderResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('folderResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPathTraversal() {
+            clear('folderResult');
+            log('folderResult', 'Testing path traversal protection with ../../etc/passwd', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/folders?path=../../etc/passwd`, {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('folderResult', 'Path traversal correctly blocked!', 'success');
+                    log('folderResult', `Response: ${JSON.stringify(data)}`, 'info');
+                } else {
+                    log('folderResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('folderResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Settings Tests
+        async function testGetSettings() {
+            clear('settingsResult');
+            log('settingsResult', 'GET /api/settings', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('settingsResult', 'Success!', 'success');
+                    log('settingsResult', `Settings: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('settingsResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('settingsResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateSettings() {
+            clear('settingsResult');
+            log('settingsResult', 'PATCH /api/settings (setting rate limit to 1048576 bytes/s)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        global_rate_limit_bps: '1048576',
+                        max_concurrent_downloads: '3'
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('settingsResult', 'Settings updated successfully!', 'success');
+                    log('settingsResult', `Updated settings: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('settingsResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('settingsResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidSettings() {
+            clear('settingsResult');
+            log('settingsResult', 'Testing invalid setting (negative rate limit)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ global_rate_limit_bps: '-100' })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('settingsResult', 'Invalid setting correctly rejected!', 'success');
+                    log('settingsResult', `Response: ${JSON.stringify(data)}`, 'info');
+                } else {
+                    log('settingsResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('settingsResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Download Tests
+        async function testGetDownloads() {
+            clear('downloadResult');
+            log('downloadResult', 'GET /api/downloads', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'Success!', 'success');
+                    log('downloadResult', `Downloads: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateDownload() {
+            clear('downloadResult');
+            // Using a small test file
+            const testUrl = 'https://httpbin.org/bytes/1024';
+            log('downloadResult', `POST /api/downloads (URL: ${testUrl})`, 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: testUrl,
+                        folder: '',
+                        filename: 'test_download.bin'
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    testDownloadId = data.id;
+                    log('downloadResult', 'Download created successfully!', 'success');
+                    log('downloadResult', `Download ID: ${testDownloadId}`, 'info');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPauseDownload() {
+            if (!testDownloadId) {
+                clear('downloadResult');
+                log('downloadResult', 'Please create a download first!', 'error');
+                return;
+            }
+            clear('downloadResult');
+            log('downloadResult', `PATCH /api/downloads/${testDownloadId} (action: pause)`, 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/${testDownloadId}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ action: 'pause' })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'Download paused successfully!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testResumeDownload() {
+            if (!testDownloadId) {
+                clear('downloadResult');
+                log('downloadResult', 'Please create a download first!', 'error');
+                return;
+            }
+            clear('downloadResult');
+            log('downloadResult', `PATCH /api/downloads/${testDownloadId} (action: resume)`, 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/${testDownloadId}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ action: 'resume' })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'Download resumed successfully!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteDownload() {
+            if (!testDownloadId) {
+                clear('downloadResult');
+                log('downloadResult', 'Please create a download first!', 'error');
+                return;
+            }
+            clear('downloadResult');
+            log('downloadResult', `DELETE /api/downloads/${testDownloadId} (smart delete)`, 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/${testDownloadId}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'Download removed from manager!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                    log('downloadResult', 'Note: If download was completed, file was kept. If incomplete, file was deleted.', 'info');
+                    testDownloadId = null;
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteDownloadWithFile() {
+            if (!testDownloadId) {
+                clear('downloadResult');
+                log('downloadResult', 'Please create a download first!', 'error');
+                return;
+            }
+            clear('downloadResult');
+            log('downloadResult', `DELETE /api/downloads/${testDownloadId}?delete_file=true`, 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/${testDownloadId}?delete_file=true`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'Download deleted with file!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                    log('downloadResult', 'Note: File was explicitly deleted regardless of download status.', 'info');
+                    testDownloadId = null;
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPauseAll() {
+            clear('downloadResult');
+            log('downloadResult', 'POST /api/downloads/pause-all', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/pause-all`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'All downloads paused!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testResumeAll() {
+            clear('downloadResult');
+            log('downloadResult', 'POST /api/downloads/resume-all', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/resume-all`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log('downloadResult', 'All downloads resumed!', 'success');
+                    log('downloadResult', `Result: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('downloadResult', `Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('downloadResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // WebSocket Tests
+        function updateWsStatus(connected) {
+            const dot = document.getElementById('wsStatusDot');
+            const text = document.getElementById('wsStatusText');
+            if (connected) {
+                dot.className = 'ws-status connected';
+                text.textContent = 'Connected';
+            } else {
+                dot.className = 'ws-status disconnected';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function testWsConnect() {
+            clear('wsMessages');
+            const apiUrl = getApiUrl().replace('http://', 'ws://').replace('https://', 'wss://');
+            const wsUrl = `${apiUrl}/ws?api_key=${document.getElementById('apiKey').value}`;
+
+            log('wsMessages', `Connecting to ${wsUrl}`, 'info');
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                log('wsMessages', 'WebSocket connected!', 'success');
+                updateWsStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status') {
+                    log('wsMessages', `Status update: ${data.downloads.length} download(s)`, 'info');
+                } else {
+                    log('wsMessages', `Message: ${JSON.stringify(data)}`, 'info');
+                }
+            };
+
+            ws.onerror = (error) => {
+                log('wsMessages', `WebSocket error: ${error}`, 'error');
+            };
+
+            ws.onclose = () => {
+                log('wsMessages', 'WebSocket disconnected', 'info');
+                updateWsStatus(false);
+            };
+        }
+
+        function testWsInvalidAuth() {
+            clear('wsMessages');
+            const apiUrl = getApiUrl().replace('http://', 'ws://').replace('https://', 'wss://');
+            const wsUrl = `${apiUrl}/ws?api_key=invalid-key`;
+
+            log('wsMessages', 'Testing invalid auth...', 'info');
+
+            const testWs = new WebSocket(wsUrl);
+
+            testWs.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                log('wsMessages', `Received: ${JSON.stringify(data)}`, 'info');
+            };
+
+            testWs.onclose = () => {
+                log('wsMessages', 'Connection closed (expected for invalid auth)', 'success');
+            };
+        }
+
+        function testWsSendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('wsMessages', 'Please connect WebSocket first!', 'error');
+                return;
+            }
+
+            const testMessage = { test: 'hello from client', timestamp: Date.now() };
+            log('wsMessages', `Sending: ${JSON.stringify(testMessage)}`, 'info');
+            ws.send(JSON.stringify(testMessage));
+        }
+
+        function testWsDisconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                log('wsMessages', 'Disconnecting...', 'info');
+            } else {
+                log('wsMessages', 'No active connection', 'error');
+            }
+        }
+
+        // Run all tests sequentially
+        async function runAllTests() {
+            // Clear all results
+            ['authResult', 'folderResult', 'settingsResult', 'downloadResult', 'wsMessages'].forEach(clear);
+
+            // Authentication
+            await testValidAuth();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidAuth();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Folders
+            await testGetFolders();
+            await new Promise(r => setTimeout(r, 500));
+            await testCreateFolder();
+            await new Promise(r => setTimeout(r, 500));
+            await testPathTraversal();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Settings
+            await testGetSettings();
+            await new Promise(r => setTimeout(r, 500));
+            await testUpdateSettings();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidSettings();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Downloads
+            await testGetDownloads();
+            await new Promise(r => setTimeout(r, 500));
+            await testCreateDownload();
+            await new Promise(r => setTimeout(r, 2000)); // Wait for download to start
+            await testPauseDownload();
+            await new Promise(r => setTimeout(r, 500));
+            await testResumeDownload();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDeleteDownload();
+            await new Promise(r => setTimeout(r, 500));
+
+            // WebSocket
+            testWsConnect();
+            await new Promise(r => setTimeout(r, 2000));
+            testWsSendMessage();
+
+            alert('All tests completed! Check each section for results.');
+        }
+
+        // Initialize WebSocket status
+        updateWsStatus(false);
+    </script>
+</body>
+</html>

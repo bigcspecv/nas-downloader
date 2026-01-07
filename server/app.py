@@ -2,9 +2,11 @@ import os
 import sqlite3
 import asyncio
 import threading
+import json
 from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_sock import Sock
 from dotenv import load_dotenv
 from download_manager import DownloadManager
 
@@ -21,6 +23,7 @@ DB_PATH = os.path.join(DATA_PATH, 'downloads.db')
 
 # Initialize Flask app
 app = Flask(__name__)
+sock = Sock(app)
 
 # Configure CORS
 if ALLOWED_ORIGINS == '*':
@@ -35,6 +38,10 @@ download_manager = None
 # Background event loop for async operations
 background_loop = None
 background_thread = None
+
+# WebSocket client tracking
+websocket_clients = set()
+broadcast_task = None
 
 
 # Database initialization
@@ -393,6 +400,9 @@ def update_download(download_id):
             return jsonify({'error': 'Download not found'}), 404
 
         return jsonify(download), 200
+    except ValueError as e:
+        # Status validation error (e.g., trying to pause a completed download)
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Failed to update download: {str(e)}'}), 500
 
@@ -400,7 +410,12 @@ def update_download(download_id):
 @app.route('/api/downloads/<download_id>', methods=['DELETE'])
 @require_auth
 def delete_download(download_id):
-    """Cancel and delete a download"""
+    """Cancel and delete a download
+
+    Query parameters:
+        delete_file (optional): 'true' to always delete file, 'false' to never delete.
+                               If omitted, deletes file only if download is incomplete.
+    """
     try:
         # Check if download exists
         downloads = run_async(download_manager.get_downloads())
@@ -409,8 +424,14 @@ def delete_download(download_id):
         if download is None:
             return jsonify({'error': 'Download not found'}), 404
 
-        run_async(download_manager.cancel_download(download_id))
-        return jsonify({'message': 'Download cancelled and deleted'}), 200
+        # Get delete_file parameter from query string
+        delete_file_param = request.args.get('delete_file')
+        delete_file = None
+        if delete_file_param is not None:
+            delete_file = delete_file_param.lower() == 'true'
+
+        run_async(download_manager.cancel_download(download_id, delete_file=delete_file))
+        return jsonify({'message': 'Download removed from manager'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to delete download: {str(e)}'}), 500
 
@@ -438,13 +459,106 @@ def resume_all_downloads():
 
 
 # WebSocket endpoint (Step 11)
-# Will be implemented with flask-sock
+@sock.route('/ws')
+def websocket_handler(ws):
+    """WebSocket endpoint for real-time download updates"""
+    # Authenticate using query parameter
+    api_key = request.args.get('api_key')
+
+    if not api_key:
+        ws.send(json.dumps({'error': 'Missing api_key query parameter'}))
+        ws.close(reason='Authentication required')
+        return
+
+    # Constant-time comparison to prevent timing attacks
+    if not compare_digest(api_key, API_KEY):
+        ws.send(json.dumps({'error': 'Invalid API key'}))
+        ws.close(reason='Invalid credentials')
+        return
+
+    # Add client to the set of connected clients
+    websocket_clients.add(ws)
+
+    try:
+        # Send initial download status
+        downloads = run_async(download_manager.get_downloads())
+        ws.send(json.dumps({
+            'type': 'status',
+            'downloads': downloads
+        }))
+
+        # Keep connection alive and handle incoming messages
+        while True:
+            message = ws.receive()
+
+            if message is None:
+                # Connection closed
+                break
+
+            # Handle client messages (currently we don't expect any specific messages)
+            # But we can extend this to support commands like pause/resume from WS
+            try:
+                data = json.loads(message)
+                # Could handle commands here in future
+                # For now, just echo back an acknowledgment
+                ws.send(json.dumps({'type': 'ack', 'received': data}))
+            except json.JSONDecodeError:
+                ws.send(json.dumps({'error': 'Invalid JSON'}))
+
+    except Exception as e:
+        # Handle any errors during WebSocket communication
+        print(f"WebSocket error: {e}")
+    finally:
+        # Remove client from the set when disconnected
+        websocket_clients.discard(ws)
+
+
+# Broadcast function to send updates to all connected WebSocket clients
+async def broadcast_downloads():
+    """Periodically broadcast download status to all connected WebSocket clients"""
+    while True:
+        try:
+            # Wait 1 second between broadcasts
+            await asyncio.sleep(1)
+
+            if not websocket_clients:
+                # No clients connected, skip
+                continue
+
+            # Get current download status
+            downloads = await download_manager.get_downloads()
+
+            # Prepare message
+            message = json.dumps({
+                'type': 'status',
+                'downloads': downloads
+            })
+
+            # Send to all connected clients
+            # Make a copy of the set to avoid modification during iteration
+            clients = websocket_clients.copy()
+            for client in clients:
+                try:
+                    client.send(message)
+                except Exception as e:
+                    # If send fails, remove the client (it's probably disconnected)
+                    print(f"Failed to send to WebSocket client: {e}")
+                    websocket_clients.discard(client)
+
+        except Exception as e:
+            print(f"Broadcast error: {e}")
+            # Continue broadcasting even if there's an error
 
 
 # Serve static files
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
+
+
+@app.route('/test.html')
+def test_page():
+    return app.send_static_file('test.html')
 
 
 # Error handlers
@@ -470,10 +584,14 @@ if __name__ == '__main__':
     time.sleep(0.1)  # Give background loop time to start
     download_manager = DownloadManager(db_path=DB_PATH, download_path=DOWNLOAD_PATH)
 
+    # Start WebSocket broadcast task
+    broadcast_task = asyncio.run_coroutine_threadsafe(broadcast_downloads(), background_loop)
+
     print(f"Starting Download Manager on port {PORT}")
     print(f"Download path: {DOWNLOAD_PATH}")
     print(f"Database path: {DB_PATH}")
     print("Background event loop initialized")
+    print("WebSocket broadcast task started")
 
     # Run Flask app
     app.run(host='0.0.0.0', port=PORT, debug=False)

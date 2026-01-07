@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 11
+## Current Step: 12
 
 ## In Progress
 
@@ -104,7 +104,7 @@ After completing your step, you MUST:
 - [x] 8. Create `server/download_manager.py` (DownloadManager + Download classes)
 - [x] 9. Implement download logic (aiohttp, pause/resume with Range headers, rate limiting)
 - [x] 10. Add download endpoints (CRUD + pause-all/resume-all)
-- [ ] 11. Add WebSocket endpoint (`/ws`) with auth and message handling
+- [x] 11. Add WebSocket endpoint (`/ws`) with auth and message handling
 
 ### Phase 4: Web UI
 - [ ] 12. Create `server/static/index.html` (status, folders, downloads list, controls)
@@ -141,6 +141,7 @@ After completing your step, you MUST:
 | 8 | Created server/download_manager.py with Download and DownloadManager classes. Download handles individual downloads via aiohttp with pause/resume using HTTP Range headers, calculates speed/ETA, persists state every 5s. DownloadManager loads existing downloads on init, enforces max concurrent downloads, applies global rate limiting (bytes-per-second tracking), auto-processes queue, resets 'downloading' status to 'queued' on startup for crash recovery. |
 | 9 | Code review of download_manager.py confirmed implementation is complete and production-ready. All download logic already implemented in step 8: aiohttp with async/await, pause/resume via HTTP Range headers with 206 status handling, global rate limiting with per-second byte tracking, speed/ETA calculation, concurrent download management, error handling, and resource cleanup. No issues found. |
 | 10 | Implemented download endpoints in app.py: GET /api/downloads (list all), POST /api/downloads (create with url/folder/filename), GET/PATCH/DELETE /api/downloads/<id> (get/pause-resume/cancel), POST /api/downloads/pause-all and resume-all. Fixed Flask async compatibility by using background event loop in separate thread with asyncio.run_coroutine_threadsafe(). Fixed process_queue race condition where tasks were cleaned up too late. Added error_message field to download progress response. Tested and verified: HTTP downloads work perfectly, HTTPS downloads work with valid SSL certificates, invalid/expired certificates are properly rejected by aiohttp's default SSL handling, progress tracking accurate (bytes/percentage/speed/ETA), queue management functional. |
+| 11 | Implemented WebSocket endpoint at /ws using flask-sock. Authentication via api_key query parameter (constant-time comparison). Sends initial download status on connect, then broadcasts updates every 1 second to all connected clients. WebSocket handler manages client set (add on connect, remove on disconnect). Background broadcast_downloads() task runs in background event loop, sends JSON messages with type='status' and downloads array. Clients can send JSON messages (currently just echoed back for future extensibility). |
 
 ---
 
@@ -166,6 +167,8 @@ After completing your step, you MUST:
 | Reset 'downloading' to 'queued' on startup | Allows resuming downloads after server crash/restart - downloads in progress are safely resumed from last saved byte offset | 8 |
 | Batch DB progress updates every 5 seconds | Reduces DB write frequency during downloads while maintaining reasonable state persistence granularity | 8 |
 | Per-second byte tracking for rate limiting | Simple rate limiting implementation that sleeps when limit exceeded in current second, resets counter every second | 8 |
+| WebSocket auth via query parameter | Using /ws?api_key=xxx for WebSocket auth instead of HTTP headers - simpler for clients and supported by all WebSocket clients (browsers, extensions, etc.) | 11 |
+| 1-second broadcast interval | Balances real-time updates with server load - 1 second provides smooth progress updates without excessive messages | 11 |
 
 ---
 
@@ -255,8 +258,51 @@ def update_download(download_id):
 ```
 
 **WebSocket Broadcasting:**
-```
-(defined in Step 11)
+```python
+# WebSocket endpoint with authentication via query parameter
+@sock.route('/ws')
+def websocket_handler(ws):
+    # Authenticate using query parameter
+    api_key = request.args.get('api_key')
+    if not api_key or not compare_digest(api_key, API_KEY):
+        ws.send(json.dumps({'error': 'Authentication failed'}))
+        ws.close()
+        return
+
+    # Add client to tracking set
+    websocket_clients.add(ws)
+
+    try:
+        # Send initial status
+        downloads = run_async(download_manager.get_downloads())
+        ws.send(json.dumps({'type': 'status', 'downloads': downloads}))
+
+        # Keep connection alive
+        while True:
+            message = ws.receive()
+            if message is None:
+                break
+            # Handle messages here
+    finally:
+        websocket_clients.discard(ws)
+
+# Background broadcast task (runs in background event loop)
+async def broadcast_downloads():
+    while True:
+        await asyncio.sleep(1)  # Broadcast every second
+        if websocket_clients:
+            downloads = await download_manager.get_downloads()
+            message = json.dumps({'type': 'status', 'downloads': downloads})
+            for client in websocket_clients.copy():
+                try:
+                    client.send(message)
+                except:
+                    websocket_clients.discard(client)
+
+# Start broadcast task on app startup
+broadcast_task = asyncio.run_coroutine_threadsafe(broadcast_downloads(), background_loop)
+
+# Client connection example: ws://localhost:5000/ws?api_key=your-secret-key-here
 ```
 
 **Error Response Format:**
@@ -314,6 +360,8 @@ None.
 5. Security: validate all paths, sanitize inputs
 6. No over-engineering - build only what's needed
 7. If stuck, document the blocker and stop
-8. After completing each step, prompt the user to commit with a short single-line commit message
+8. **Test the code with the user's help before committing** - when possible, verify functionality works as expected
+9. After testing and confirming it works, prompt the user to commit with a short single-line commit message
+10. NEVER run git commands directly - only provide commit messages for the user to execute
 
 ---

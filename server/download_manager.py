@@ -181,32 +181,48 @@ class Download:
                 await self.session.close()
 
     async def pause(self):
-        """Pause download"""
+        """Pause download - only if queued or downloading"""
+        if self.status not in ['queued', 'downloading']:
+            raise ValueError(f"Cannot pause download with status '{self.status}'")
         self.paused = True
         self.status = 'paused'
         self.update_db()
 
     async def resume(self):
-        """Resume download"""
-        if self.status == 'paused':
-            self.paused = False
-            # Will be restarted by manager
+        """Resume download - only if paused"""
+        if self.status != 'paused':
+            raise ValueError(f"Cannot resume download with status '{self.status}'")
+        self.paused = False
+        # Will be restarted by manager
 
-    async def cancel(self):
-        """Cancel download and delete partial file"""
+    async def cancel(self, delete_file: bool = None):
+        """Cancel download and optionally delete file
+
+        Args:
+            delete_file: If True, always delete file. If False, never delete.
+                        If None (default), delete only if download is incomplete.
+        """
         self.cancelled = True
+        original_status = self.status
         self.status = 'cancelled'
 
         if self.task:
             self.task.cancel()
 
-        # Delete partial file
-        file_path = self.get_file_path()
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
+        # Determine if we should delete the file
+        should_delete = delete_file
+        if delete_file is None:
+            # Default behavior: only delete if download was incomplete
+            should_delete = original_status != 'completed'
+
+        # Delete file if requested or if incomplete
+        if should_delete:
+            file_path = self.get_file_path()
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
 
     def get_progress(self) -> Dict:
         """Get current progress info"""
@@ -239,6 +255,9 @@ class DownloadManager:
         self.download_path = download_path
         self.downloads: Dict[str, Download] = {}
         self.active_tasks: List[asyncio.Task] = []
+
+        # Global pause state
+        self.global_paused = False
 
         # Rate limiting
         self.global_rate_limit_bps = 0
@@ -331,6 +350,9 @@ class DownloadManager:
         # Generate download ID
         download_id = str(uuid.uuid4())
 
+        # Set initial status based on global pause state
+        initial_status = 'paused' if self.global_paused else 'queued'
+
         # Insert into database
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -338,7 +360,7 @@ class DownloadManager:
         cursor.execute("""
             INSERT INTO downloads (id, url, filename, folder, status)
             VALUES (?, ?, ?, ?, ?)
-        """, (download_id, url, filename, folder, 'queued'))
+        """, (download_id, url, filename, folder, initial_status))
 
         conn.commit()
         conn.close()
@@ -376,10 +398,10 @@ class DownloadManager:
             # Clean up completed tasks FIRST
             self.active_tasks = [t for t in self.active_tasks if not t.done()]
 
-            print(f"process_queue: active={active_count}, queued={len(queued)}, tasks={len(self.active_tasks)}, max={self.max_concurrent_downloads}")
+            print(f"process_queue: active={active_count}, queued={len(queued)}, tasks={len(self.active_tasks)}, max={self.max_concurrent_downloads}, global_paused={self.global_paused}")
 
-            # Start new downloads if under limit
-            if active_count < self.max_concurrent_downloads and queued:
+            # Start new downloads if under limit and not globally paused
+            if not self.global_paused and active_count < self.max_concurrent_downloads and queued:
                 for download in queued[:self.max_concurrent_downloads - active_count]:
                     print(f"Starting download {download.id}")
                     task = asyncio.create_task(download.start())
@@ -404,18 +426,23 @@ class DownloadManager:
         """Resume specific download"""
         if download_id in self.downloads:
             download = self.downloads[download_id]
-            if download.status == 'paused':
-                download.status = 'queued'
-                download.paused = False
-                download.update_db()
+            await download.resume()  # This will raise ValueError if not paused
+            download.status = 'queued'
+            download.update_db()
 
-                if not self.processing:
-                    asyncio.create_task(self.process_queue())
+            if not self.processing:
+                asyncio.create_task(self.process_queue())
 
-    async def cancel_download(self, download_id: str):
-        """Cancel download and remove from queue"""
+    async def cancel_download(self, download_id: str, delete_file: bool = None):
+        """Cancel download and remove from queue
+
+        Args:
+            download_id: ID of download to cancel
+            delete_file: If True, always delete file. If False, never delete.
+                        If None (default), delete only if download is incomplete.
+        """
         if download_id in self.downloads:
-            await self.downloads[download_id].cancel()
+            await self.downloads[download_id].cancel(delete_file=delete_file)
             del self.downloads[download_id]
 
             # Remove from database
@@ -426,13 +453,19 @@ class DownloadManager:
             conn.close()
 
     async def pause_all(self):
-        """Pause all active downloads"""
+        """Enable global pause mode - pauses all downloads and prevents new ones from starting"""
+        self.global_paused = True
+
+        # Pause all downloads that are downloading or queued
         for download in self.downloads.values():
-            if download.status == 'downloading':
+            if download.status in ['downloading', 'queued']:
                 await download.pause()
 
     async def resume_all(self):
-        """Resume all paused downloads"""
+        """Disable global pause mode - resumes all paused downloads"""
+        self.global_paused = False
+
+        # Resume all paused downloads
         for download in self.downloads.values():
             if download.status == 'paused':
                 await self.resume_download(download.id)
