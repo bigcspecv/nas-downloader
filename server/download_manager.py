@@ -491,10 +491,17 @@ class DownloadManager:
         """Disable global pause mode - resumes all paused downloads"""
         self.global_paused = False
 
-        # Resume all paused downloads
+        # Change paused downloads to queued status
+        # Let process_queue() handle starting them with proper concurrency limits
         for download in self.downloads.values():
             if download.status == 'paused':
-                await self.resume_download(download.id)
+                download.paused = False
+                download.status = 'queued'
+                download.update_db()
+
+        # Start processing queue if not already running
+        if not self.processing:
+            asyncio.create_task(self.process_queue())
 
     async def get_downloads(self) -> List[Dict]:
         """Get all downloads with progress info"""

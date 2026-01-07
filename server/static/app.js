@@ -89,6 +89,17 @@ function validateRateLimit(value) {
     return null; // Valid
 }
 
+function validateMaxConcurrent(value) {
+    const num = parseInt(value);
+    if (isNaN(num)) {
+        return 'Max concurrent downloads must be a number';
+    }
+    if (num < 1) {
+        return 'Max concurrent downloads must be at least 1';
+    }
+    return null; // Valid
+}
+
 function showFieldError(fieldId, errorMessage) {
     const field = document.getElementById(fieldId);
     const controlGroup = field.closest('.control-group');
@@ -515,6 +526,34 @@ async function updateRateLimit(event) {
     }
 }
 
+async function updateMaxConcurrent(event) {
+    const valueField = document.getElementById('maxConcurrent');
+    const button = event ? event.target : null;
+
+    const value = valueField.value.trim();
+
+    // Clear previous validation errors
+    clearFieldError('maxConcurrent');
+
+    // Validate max concurrent
+    const validationError = validateMaxConcurrent(value);
+    if (validationError) {
+        showFieldError('maxConcurrent', validationError);
+        showNotification('error', 'Validation Error', validationError);
+        return;
+    }
+
+    const maxConcurrent = parseInt(value);
+
+    try {
+        await apiCall('/settings', 'PATCH', { max_concurrent_downloads: maxConcurrent.toString() }, button);
+
+        showNotification('success', 'Max Concurrent Updated', `Set to ${maxConcurrent} download${maxConcurrent !== 1 ? 's' : ''}`, 3000);
+    } catch (error) {
+        showNotification('error', 'Failed to Update Max Concurrent', error.message);
+    }
+}
+
 // Load initial settings
 async function loadSettings() {
     try {
@@ -529,13 +568,14 @@ async function loadSettings() {
 // Update settings UI when settings change
 function updateSettingsUI(settings) {
     const rateLimitBps = parseInt(settings.global_rate_limit_bps) || 0;
+    const maxConcurrent = parseInt(settings.max_concurrent_downloads) || 3;
 
     // Convert to MB/s for display
     const rateLimitMBps = Math.floor(rateLimitBps / 1048576);
     document.getElementById('rateLimit').value = rateLimitMBps;
 
-    // Note: max_concurrent_downloads is not currently displayed in the UI,
-    // but when it is added, it should be updated here as well
+    // Update max concurrent downloads
+    document.getElementById('maxConcurrent').value = maxConcurrent;
 }
 
 // ============================================================================
@@ -575,6 +615,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         rateLimitField.addEventListener('input', () => {
             clearFieldError('rateLimit');
+        });
+    }
+
+    const maxConcurrentField = document.getElementById('maxConcurrent');
+    if (maxConcurrentField) {
+        maxConcurrentField.addEventListener('blur', () => {
+            const value = maxConcurrentField.value.trim();
+            if (value) {
+                const error = validateMaxConcurrent(value);
+                showFieldError('maxConcurrent', error);
+            }
+        });
+
+        maxConcurrentField.addEventListener('input', () => {
+            clearFieldError('maxConcurrent');
         });
     }
 });

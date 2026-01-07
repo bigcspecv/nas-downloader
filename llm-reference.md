@@ -30,6 +30,8 @@ Historical steps that have been archived from the main context document.
 | 17 | Improve download status display (queued/downloading/paused/completed/failed states) |
 | 17.5 | Restructured project phases based on UX/UI assessment. Split original Phase 5 into 6 focused phases: Phase 5 (Critical UI Bug Fixes - progress bar display), Phase 6 (Multi-User Real-Time Sync - settings broadcast), Phase 7 (Folder Management Interface - browser UI), Phase 8 (Download File Management - in-progress extensions), Phase 9 (Testing & Edge Cases), Phase 10 (UI Polish). Renumbered Chrome Extension to Phase 11 and Finalize to Phase 12. Total checklist now has 50 steps instead of 28. |
 | 18 | Fixed progress bar display by updating app.js to access nested progress object (download.progress.downloaded_bytes, etc.). Added lightning bolt icon to download speed display and show last speed for paused downloads. |
+| 19 | Fixed progress data display edge cases: added lightning bolt emoji to speed displays (missing from step 18), handle unknown file sizes gracefully (show '?' and 'size unknown' when Content-Length is 0), ensure all progress data displays correctly in all download states (queued/downloading/paused/completed) |
+| 20 | Enhanced error handling and user feedback with toast notification system, form validation (client-side with real-time feedback), improved API error messages, loading states on buttons, better WebSocket reconnection logic with user notifications, comprehensive input validation on server (URL format, path traversal, filename sanitization), and specific error handling for different failure modes (network errors, permission errors, validation errors) |
 <!-- ARCHIVE-END -->
 
 ---

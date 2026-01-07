@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 22 <!-- CURRENT-STEP -->
+## Current Step: 24 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -169,9 +169,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 20. Add error handling and user feedback (better alerts, status messages, validation)
 
 ### Phase 6: UX - Multi-User & Real-Time Sync
-- [ ] 21. Broadcast settings changes via WebSocket (rate limit, max concurrent, etc.)
-- [ ] 22. Update UI to reflect settings changes from other users in real-time
-- [ ] 23. Test multi-user scenarios (two browsers, settings sync, download visibility)
+- [x] 21. Broadcast settings changes via WebSocket (rate limit, max concurrent, etc.)
+- [x] 22. Update UI to reflect settings changes from other users in real-time
+- [x] 23. Test multi-user scenarios (two browsers, settings sync, download visibility)
 
 ### Phase 7: UX - Folder Management Interface
 - [ ] 24. Create folder browser UI component (replace simple text field)
@@ -221,9 +221,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 19 | Fixed progress data display edge cases: added lightning bolt emoji to speed displays (missing from step 18), handle unknown file sizes gracefully (show '?' and 'size unknown' when Content-Length is 0), ensure all progress data displays correctly in all download states (queued/downloading/paused/completed) |
-| 20 | Enhanced error handling and user feedback with toast notification system, form validation (client-side with real-time feedback), improved API error messages, loading states on buttons, better WebSocket reconnection logic with user notifications, comprehensive input validation on server (URL format, path traversal, filename sanitization), and specific error handling for different failure modes (network errors, permission errors, validation errors) |
 | 21 | Added WebSocket broadcasting for settings changes. Server broadcasts settings_update messages when settings are modified via PATCH /api/settings. Frontend handles settings_update messages and updates UI (rate limit field) automatically for real-time multi-user sync. |
+| 22 | Added max concurrent downloads UI control with validation, update function, and real-time sync via WebSocket. All settings (rate limit and max concurrent) now update automatically across all connected users when changed. |
+| 23 | Fixed resume_all to respect max_concurrent_downloads limit. Changed resume_all to set paused downloads to queued status instead of starting them immediately, allowing process_queue to enforce concurrency limits properly. |
 <!-- CONTEXT-END -->
 
 ---
@@ -241,6 +241,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 14: When updating database settings, also update the in-memory state of the manager object. Database changes alone don't affect running code - you must sync both DB and runtime state for settings to take effect immediately.
 - Step 14: Rate limiting with large chunk sizes is ineffective. Adjust chunk size based on rate limit (e.g., rate_limit/4) to enable smooth throttling. Calculate expected download time vs actual time and sleep the difference for accurate rate limiting.
 - Step 14: When creating Download objects, the __init__ method sets default values (like status='queued'). Always override these with actual database values after construction to preserve saved state.
+- Step 23: resume_all() must not call resume_download() for each download, as resume_download() bypasses the queue and concurrency limits. Instead, change paused downloads to queued status and let process_queue() enforce limits.
 <!-- LESSONS-END -->
 
 ---
