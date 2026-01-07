@@ -248,11 +248,35 @@
             <div class="test-result" id="wsMessages"></div>
         </div>
 
+        <!-- Error Handling & Validation Tests (Step 20) -->
+        <div class="test-section">
+            <h2>6. Error Handling & Validation Tests (Step 20)</h2>
+            <div class="test-buttons">
+                <button onclick="testInvalidURL()">Test Invalid URL (missing protocol)</button>
+                <button onclick="testEmptyURL()">Test Empty URL</button>
+                <button onclick="testInvalidFilename()">Test Filename with Path Separators</button>
+                <button onclick="testEmptyFilename()">Test Empty Filename</button>
+                <button onclick="testInvalidJSON()">Test Malformed JSON</button>
+                <button onclick="testInvalidActionType()">Test Invalid Action (not pause/resume)</button>
+                <button onclick="testNegativeRateLimit()">Test Negative Rate Limit</button>
+                <button onclick="testNonNumericRateLimit()">Test Non-Numeric Rate Limit</button>
+                <button onclick="testFolderPathTraversalCreate()">Test Folder Creation Path Traversal</button>
+                <button onclick="testEmptyFolderPath()">Test Empty Folder Path</button>
+                <button onclick="testNonExistentDownloadID()">Test Non-Existent Download ID</button>
+                <button onclick="testEmptyDownloadID()">Test Empty Download ID</button>
+                <button onclick="testInvalidSettingKey()">Test Invalid Setting Key</button>
+                <button onclick="testMissingAuthHeader()">Test Missing Auth Header</button>
+                <button onclick="testMalformedAuthHeader()">Test Malformed Auth Header</button>
+            </div>
+            <div class="test-result" id="validationResult"></div>
+        </div>
+
         <!-- Run All Tests -->
         <div class="test-section">
             <h2>Run All Tests</h2>
             <div class="test-buttons">
                 <button onclick="runAllTests()" style="background: #FF9800;">Run All Tests (Sequential)</button>
+                <button onclick="runValidationTests()" style="background: #9C27B0;">Run Validation Tests Only</button>
             </div>
         </div>
     </div>
@@ -730,10 +754,406 @@
             }
         }
 
+        // ========================================================================
+        // Error Handling & Validation Tests (Step 20)
+        // ========================================================================
+
+        async function testInvalidURL() {
+            clear('validationResult');
+            log('validationResult', 'Testing invalid URL (missing protocol)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: 'www.example.com/file.zip', // Missing http:// or https://
+                        folder: ''
+                    })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Invalid URL correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmptyURL() {
+            clear('validationResult');
+            log('validationResult', 'Testing empty URL', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: '',
+                        folder: ''
+                    })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Empty URL correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidFilename() {
+            clear('validationResult');
+            log('validationResult', 'Testing filename with path separators', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: 'https://httpbin.org/bytes/100',
+                        folder: '',
+                        filename: '../../../etc/passwd' // Path traversal attempt in filename
+                    })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Invalid filename correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmptyFilename() {
+            clear('validationResult');
+            log('validationResult', 'Testing empty filename (whitespace only)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: 'https://httpbin.org/bytes/100',
+                        folder: '',
+                        filename: '   ' // Whitespace only
+                    })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Empty filename correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidJSON() {
+            clear('validationResult');
+            log('validationResult', 'Testing malformed JSON body', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: '{invalid json here' // Malformed JSON
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Malformed JSON correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidActionType() {
+            clear('validationResult');
+            log('validationResult', 'Testing invalid action type (not pause/resume)', 'info');
+            try {
+                // First create a test download
+                const createResponse = await fetch(`${getApiUrl()}/api/downloads`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        url: 'https://httpbin.org/bytes/1024',
+                        folder: ''
+                    })
+                });
+                const createData = await createResponse.json();
+                const downloadId = createData.id;
+
+                // Try to update with invalid action
+                const response = await fetch(`${getApiUrl()}/api/downloads/${downloadId}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ action: 'delete' }) // Invalid action
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Invalid action correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+
+                // Clean up
+                await fetch(`${getApiUrl()}/api/downloads/${downloadId}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNegativeRateLimit() {
+            clear('validationResult');
+            log('validationResult', 'Testing negative rate limit value', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ global_rate_limit_bps: '-500' })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Negative rate limit correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNonNumericRateLimit() {
+            clear('validationResult');
+            log('validationResult', 'Testing non-numeric rate limit value', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ global_rate_limit_bps: 'not-a-number' })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Non-numeric rate limit correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFolderPathTraversalCreate() {
+            clear('validationResult');
+            log('validationResult', 'Testing folder creation with path traversal', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/folders`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ path: '../../etc/malicious' })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Path traversal correctly blocked!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmptyFolderPath() {
+            clear('validationResult');
+            log('validationResult', 'Testing empty folder path', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/folders`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ path: '   ' }) // Whitespace only
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Empty folder path correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNonExistentDownloadID() {
+            clear('validationResult');
+            log('validationResult', 'Testing non-existent download ID', 'info');
+            try {
+                const fakeId = 'non-existent-id-12345';
+                const response = await fetch(`${getApiUrl()}/api/downloads/${fakeId}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ action: 'pause' })
+                });
+                const data = await response.json();
+                if (response.status === 404) {
+                    log('validationResult', 'Non-existent download correctly returns 404!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmptyDownloadID() {
+            clear('validationResult');
+            log('validationResult', 'Testing empty download ID (whitespace)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/downloads/   `, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ action: 'pause' })
+                });
+                const data = await response.json();
+                if (response.status === 400 || response.status === 404) {
+                    log('validationResult', 'Empty download ID correctly rejected!', 'success');
+                    log('validationResult', `Status: ${response.status}, Error: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidSettingKey() {
+            clear('validationResult');
+            log('validationResult', 'Testing invalid setting key', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ invalid_setting_name: '100' })
+                });
+                const data = await response.json();
+                if (response.status === 400) {
+                    log('validationResult', 'Invalid setting key correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMissingAuthHeader() {
+            clear('validationResult');
+            log('validationResult', 'Testing request without auth header', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                        // No Authorization header
+                    }
+                });
+                const data = await response.json();
+                if (response.status === 401) {
+                    log('validationResult', 'Missing auth correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMalformedAuthHeader() {
+            clear('validationResult');
+            log('validationResult', 'Testing malformed auth header (no Bearer prefix)', 'info');
+            try {
+                const response = await fetch(`${getApiUrl()}/api/settings`, {
+                    headers: {
+                        'Authorization': 'just-the-key-without-bearer',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (response.status === 401) {
+                    log('validationResult', 'Malformed auth header correctly rejected!', 'success');
+                    log('validationResult', `Error message: ${data.error}`, 'info');
+                } else {
+                    log('validationResult', `Unexpected status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('validationResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Run validation tests
+        async function runValidationTests() {
+            clear('validationResult');
+            log('validationResult', '=== Starting Validation Test Suite ===', 'info');
+
+            await testInvalidURL();
+            await new Promise(r => setTimeout(r, 500));
+            await testEmptyURL();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidFilename();
+            await new Promise(r => setTimeout(r, 500));
+            await testEmptyFilename();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidJSON();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidActionType();
+            await new Promise(r => setTimeout(r, 500));
+            await testNegativeRateLimit();
+            await new Promise(r => setTimeout(r, 500));
+            await testNonNumericRateLimit();
+            await new Promise(r => setTimeout(r, 500));
+            await testFolderPathTraversalCreate();
+            await new Promise(r => setTimeout(r, 500));
+            await testEmptyFolderPath();
+            await new Promise(r => setTimeout(r, 500));
+            await testNonExistentDownloadID();
+            await new Promise(r => setTimeout(r, 500));
+            await testEmptyDownloadID();
+            await new Promise(r => setTimeout(r, 500));
+            await testInvalidSettingKey();
+            await new Promise(r => setTimeout(r, 500));
+            await testMissingAuthHeader();
+            await new Promise(r => setTimeout(r, 500));
+            await testMalformedAuthHeader();
+
+            log('validationResult', '=== Validation Test Suite Complete ===', 'success');
+            alert('All validation tests completed! Check results above.');
+        }
+
+        // ========================================================================
         // Run all tests sequentially
+        // ========================================================================
         async function runAllTests() {
             // Clear all results
-            ['authResult', 'folderResult', 'settingsResult', 'downloadResult', 'wsMessages'].forEach(clear);
+            ['authResult', 'folderResult', 'settingsResult', 'downloadResult', 'wsMessages', 'validationResult'].forEach(clear);
 
             // Authentication
             await testValidAuth();
@@ -768,6 +1188,11 @@
             await new Promise(r => setTimeout(r, 1000));
             await testDeleteDownload();
             await new Promise(r => setTimeout(r, 500));
+
+            // Validation Tests (Step 20)
+            log('validationResult', '=== Running Validation Tests ===', 'info');
+            await runValidationTests();
+            await new Promise(r => setTimeout(r, 1000));
 
             // WebSocket
             testWsConnect();

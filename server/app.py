@@ -176,15 +176,25 @@ def create_folder():
     """Create a new folder in the download directory"""
     data = request.get_json()
 
-    if not data or 'path' not in data:
+    if not data:
+        return jsonify({'error': 'Request body must be valid JSON'}), 400
+
+    if 'path' not in data:
         return jsonify({'error': 'Missing path in request body'}), 400
 
     folder_path = data['path']
 
+    # Validate input type
+    if not isinstance(folder_path, str):
+        return jsonify({'error': 'Path must be a string'}), 400
+
+    if folder_path.strip() == '':
+        return jsonify({'error': 'Path cannot be empty'}), 400
+
     # Validate path to prevent traversal
     target_path = validate_path(folder_path)
     if target_path is None:
-        return jsonify({'error': 'Invalid path'}), 400
+        return jsonify({'error': 'Invalid path - path traversal detected'}), 400
 
     # Check if folder already exists
     if os.path.exists(target_path):
@@ -200,6 +210,10 @@ def create_folder():
             'name': os.path.basename(target_path),
             'path': rel_path.replace('\\', '/')
         }), 201
+    except PermissionError:
+        return jsonify({'error': 'Permission denied - cannot create folder'}), 403
+    except OSError as e:
+        return jsonify({'error': f'Failed to create folder: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Failed to create folder: {str(e)}'}), 500
 
@@ -339,18 +353,41 @@ def create_download():
     """Create a new download"""
     data = request.get_json()
 
-    if not data or 'url' not in data:
+    if not data:
+        return jsonify({'error': 'Request body must be valid JSON'}), 400
+
+    if 'url' not in data:
         return jsonify({'error': 'Missing url in request body'}), 400
 
     url = data['url']
     folder = data.get('folder', '')
     filename = data.get('filename')
 
+    # Validate URL format
+    if not url or not isinstance(url, str) or url.strip() == '':
+        return jsonify({'error': 'URL must be a non-empty string'}), 400
+
+    # Basic URL validation
+    if not url.startswith('http://') and not url.startswith('https://'):
+        return jsonify({'error': 'URL must start with http:// or https://'}), 400
+
     # Validate folder path if provided
     if folder:
+        if not isinstance(folder, str):
+            return jsonify({'error': 'Folder path must be a string'}), 400
         target_path = validate_path(folder)
         if target_path is None:
-            return jsonify({'error': 'Invalid folder path'}), 400
+            return jsonify({'error': 'Invalid folder path - path traversal detected'}), 400
+
+    # Validate filename if provided
+    if filename is not None:
+        if not isinstance(filename, str):
+            return jsonify({'error': 'Filename must be a string'}), 400
+        # Check for path separators in filename
+        if '/' in filename or '\\' in filename:
+            return jsonify({'error': 'Filename cannot contain path separators'}), 400
+        if filename.strip() == '':
+            return jsonify({'error': 'Filename cannot be empty'}), 400
 
     try:
         download_id = run_async(download_manager.add_download(url, folder, filename))
@@ -360,6 +397,9 @@ def create_download():
         created_download = next((d for d in downloads if d['id'] == download_id), None)
 
         return jsonify(created_download), 201
+    except ValueError as e:
+        # Validation errors from download manager
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Failed to create download: {str(e)}'}), 500
 
@@ -384,34 +424,50 @@ def get_download(download_id):
 @require_auth
 def update_download(download_id):
     """Update download (pause/resume)"""
+    if not download_id or download_id.strip() == '':
+        return jsonify({'error': 'Download ID is required'}), 400
+
     data = request.get_json()
 
-    if not data or 'action' not in data:
+    if not data:
+        return jsonify({'error': 'Request body must be valid JSON'}), 400
+
+    if 'action' not in data:
         return jsonify({'error': 'Missing action in request body'}), 400
 
     action = data['action']
 
-    try:
-        if action == 'pause':
-            run_async(download_manager.pause_download(download_id))
-        elif action == 'resume':
-            run_async(download_manager.resume_download(download_id))
-        else:
-            return jsonify({'error': f'Invalid action: {action}. Use "pause" or "resume"'}), 400
+    if not isinstance(action, str):
+        return jsonify({'error': 'Action must be a string'}), 400
 
-        # Return updated download info
+    action = action.lower().strip()
+
+    if action not in ['pause', 'resume']:
+        return jsonify({'error': f'Invalid action: "{action}". Must be "pause" or "resume"'}), 400
+
+    try:
+        # Check if download exists first
         downloads = run_async(download_manager.get_downloads())
         download = next((d for d in downloads if d['id'] == download_id), None)
 
         if download is None:
             return jsonify({'error': 'Download not found'}), 404
 
+        if action == 'pause':
+            run_async(download_manager.pause_download(download_id))
+        elif action == 'resume':
+            run_async(download_manager.resume_download(download_id))
+
+        # Return updated download info
+        downloads = run_async(download_manager.get_downloads())
+        download = next((d for d in downloads if d['id'] == download_id), None)
+
         return jsonify(download), 200
     except ValueError as e:
         # Status validation error (e.g., trying to pause a completed download)
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'error': f'Failed to update download: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to {action} download: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/<download_id>', methods=['DELETE'])
@@ -423,6 +479,9 @@ def delete_download(download_id):
         delete_file (optional): 'true' to always delete file, 'false' to never delete.
                                If omitted, deletes file only if download is incomplete.
     """
+    if not download_id or download_id.strip() == '':
+        return jsonify({'error': 'Download ID is required'}), 400
+
     try:
         # Check if download exists
         downloads = run_async(download_manager.get_downloads())
@@ -438,7 +497,14 @@ def delete_download(download_id):
             delete_file = delete_file_param.lower() == 'true'
 
         run_async(download_manager.cancel_download(download_id, delete_file=delete_file))
-        return jsonify({'message': 'Download removed from manager'}), 200
+        return jsonify({'message': 'Download removed successfully'}), 200
+    except ValueError as e:
+        # Validation errors from download manager
+        return jsonify({'error': str(e)}), 400
+    except FileNotFoundError as e:
+        return jsonify({'error': f'File not found: {str(e)}'}), 404
+    except PermissionError:
+        return jsonify({'error': 'Permission denied - cannot delete file'}), 403
     except Exception as e:
         return jsonify({'error': f'Failed to delete download: {str(e)}'}), 500
 

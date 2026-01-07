@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 20 <!-- CURRENT-STEP -->
+## Current Step: 21 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -166,7 +166,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 17. Improve download status display (queued/downloading/paused/completed/failed states)
 - [x] 18. Fix progress bar display (currently shows 0.00/0.00 MB even during/after download)
 - [x] 19. Fix progress data updates (downloaded_bytes, total_bytes, percentage not displaying)
-- [ ] 20. Add error handling and user feedback (better alerts, status messages, validation)
+- [x] 20. Add error handling and user feedback (better alerts, status messages, validation)
 
 ### Phase 6: UX - Multi-User & Real-Time Sync
 - [ ] 21. Broadcast settings changes via WebSocket (rate limit, max concurrent, etc.)
@@ -221,9 +221,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 18 | Restructured project phases based on UX/UI assessment. Split original Phase 5 into 6 focused phases: Phase 5 (Critical UI Bug Fixes - progress bar display), Phase 6 (Multi-User Real-Time Sync - settings broadcast), Phase 7 (Folder Management Interface - browser UI), Phase 8 (Download File Management - in-progress extensions), Phase 9 (Testing & Edge Cases), Phase 10 (UI Polish). Renumbered Chrome Extension to Phase 11 and Finalize to Phase 12. Total checklist now has 50 steps instead of 28. |
 | 18 | Fixed progress bar display by updating app.js to access nested progress object (download.progress.downloaded_bytes, etc.). Added lightning bolt icon to download speed display and show last speed for paused downloads. |
 | 19 | Fixed progress data display edge cases: added lightning bolt emoji to speed displays (missing from step 18), handle unknown file sizes gracefully (show '?' and 'size unknown' when Content-Length is 0), ensure all progress data displays correctly in all download states (queued/downloading/paused/completed) |
+| 20 | Enhanced error handling and user feedback with toast notification system, form validation (client-side with real-time feedback), improved API error messages, loading states on buttons, better WebSocket reconnection logic with user notifications, comprehensive input validation on server (URL format, path traversal, filename sanitization), and specific error handling for different failure modes (network errors, permission errors, validation errors) |
 <!-- CONTEXT-END -->
 
 ---
@@ -260,6 +260,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | WebSocket auth via query parameter | Using /ws?api_key=xxx for WebSocket auth instead of HTTP headers - simpler for clients and supported by all WebSocket clients (browsers, extensions, etc.) | 11 |
 | 1-second broadcast interval | Balances real-time updates with server load - 1 second provides smooth progress updates without excessive messages | 11 |
 | Restructure Phase 5 into 6 focused phases | Original Phase 5 was too broad. Splitting into specific phases (Critical Bugs, Multi-User Sync, Folder UI, File Management, Testing, Polish) provides clearer scope, better progress tracking, and ensures UX issues are addressed systematically before moving to Chrome extension | 18 |
+| Toast notification system instead of browser alerts | Provides better UX with non-blocking notifications, auto-dismiss after timeout, visual feedback with icons/colors for different message types (success/error/warning/info), and allows multiple notifications to stack | 20 |
 <!-- DECISIONS-END -->
 
 ---

@@ -14,47 +14,168 @@ let API_KEY = window.location.hash.substring(1);
 if (!API_KEY) {
     API_KEY = prompt('Enter API Key:');
     if (!API_KEY) {
-        alert('API key is required to use the download manager.');
+        showNotification('error', 'Authentication Required', 'API key is required to use the download manager.');
     } else {
         // Store in URL hash for convenience (not secure, but this is for local use)
         window.location.hash = API_KEY;
     }
 }
 
-// WebSocket connection
+// ============================================================================
+// Notification System
+// ============================================================================
+
+function showNotification(type, title, message, duration = 5000) {
+    const container = document.getElementById('notificationContainer');
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+
+    notification.innerHTML = `
+        <div class="notification-icon">${icons[type] || icons.info}</div>
+        <div class="notification-content">
+            <div class="notification-title">${escapeHtml(title)}</div>
+            ${message ? `<div class="notification-message">${escapeHtml(message)}</div>` : ''}
+        </div>
+        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    container.appendChild(notification);
+
+    // Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(400px)';
+            setTimeout(() => notification.remove(), 300);
+        }, duration);
+    }
+}
+
+// ============================================================================
+// Form Validation
+// ============================================================================
+
+function validateURL(url) {
+    if (!url || url.trim() === '') {
+        return 'URL is required';
+    }
+
+    try {
+        const urlObj = new URL(url);
+        if (!['http:', 'https:'].includes(urlObj.protocol)) {
+            return 'URL must use HTTP or HTTPS protocol';
+        }
+        return null; // Valid
+    } catch (e) {
+        return 'Please enter a valid URL';
+    }
+}
+
+function validateRateLimit(value) {
+    const num = parseInt(value);
+    if (isNaN(num)) {
+        return 'Rate limit must be a number';
+    }
+    if (num < 0) {
+        return 'Rate limit must be 0 or greater';
+    }
+    return null; // Valid
+}
+
+function showFieldError(fieldId, errorMessage) {
+    const field = document.getElementById(fieldId);
+    const controlGroup = field.closest('.control-group');
+
+    // Remove existing error
+    const existingError = controlGroup.querySelector('.validation-error');
+    if (existingError) {
+        existingError.remove();
+    }
+
+    if (errorMessage) {
+        controlGroup.classList.add('error');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'validation-error';
+        errorDiv.textContent = errorMessage;
+        controlGroup.appendChild(errorDiv);
+    } else {
+        controlGroup.classList.remove('error');
+    }
+}
+
+function clearFieldError(fieldId) {
+    showFieldError(fieldId, null);
+}
+
+// ============================================================================
+// WebSocket Connection
+// ============================================================================
+
 function connect() {
     if (!API_KEY) return;
 
     const wsUrl = `${WS_URL}?api_key=${encodeURIComponent(API_KEY)}`;
-    ws = new WebSocket(wsUrl);
+
+    try {
+        ws = new WebSocket(wsUrl);
+    } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+        showNotification('error', 'Connection Failed', 'Unable to connect to server. Please check your network connection.');
+        updateConnectionStatus(false);
+        scheduleReconnect();
+        return;
+    }
 
     ws.onopen = () => {
         console.log('WebSocket connected');
         updateConnectionStatus(true);
         reconnectAttempts = 0;
+        showNotification('success', 'Connected', 'Real-time updates enabled', 3000);
     };
 
     ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleWebSocketMessage(data);
+        try {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+        } catch (error) {
+            console.error('Failed to parse WebSocket message:', error);
+        }
     };
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        // Don't show notification on every error - wait for onclose
     };
 
-    ws.onclose = () => {
-        console.log('WebSocket disconnected');
+    ws.onclose = (event) => {
+        console.log('WebSocket disconnected', event.code, event.reason);
         updateConnectionStatus(false);
 
-        // Attempt reconnection
-        if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-            console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-            setTimeout(connect, delay);
+        // Only show notification if not a clean close
+        if (event.code !== 1000 && reconnectAttempts === 0) {
+            showNotification('warning', 'Disconnected', 'Connection to server lost. Attempting to reconnect...', 3000);
         }
+
+        scheduleReconnect();
     };
+}
+
+function scheduleReconnect() {
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+        console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+        setTimeout(connect, delay);
+    } else {
+        showNotification('error', 'Connection Failed', 'Could not reconnect to server after multiple attempts. Please refresh the page.', 0);
+    }
 }
 
 function handleWebSocketMessage(data) {
@@ -63,6 +184,8 @@ function handleWebSocketMessage(data) {
         globalPaused = data.global_paused || false;
         renderDownloads();
         updatePauseButton();
+    } else if (data.error) {
+        console.error('WebSocket error:', data.error);
     }
 }
 
@@ -75,9 +198,19 @@ function updateConnectionStatus(connected) {
         text.textContent = 'Connected';
     } else {
         dot.classList.remove('connected');
-        text.textContent = reconnectAttempts > 0 ? 'Reconnecting...' : 'Disconnected';
+        if (reconnectAttempts > 0 && reconnectAttempts < maxReconnectAttempts) {
+            text.textContent = 'Reconnecting...';
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+            text.textContent = 'Connection Failed';
+        } else {
+            text.textContent = 'Disconnected';
+        }
     }
 }
+
+// ============================================================================
+// UI Rendering
+// ============================================================================
 
 function renderDownloads() {
     const container = document.getElementById('downloadsList');
@@ -168,67 +301,121 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// API calls
-async function apiCall(endpoint, method = 'GET', body = null) {
-    const options = {
-        method,
-        headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json'
+// ============================================================================
+// API Calls with Loading States
+// ============================================================================
+
+async function apiCall(endpoint, method = 'GET', body = null, buttonElement = null) {
+    // Show loading state on button if provided
+    if (buttonElement) {
+        buttonElement.classList.add('loading');
+        buttonElement.disabled = true;
+    }
+
+    try {
+        const options = {
+            method,
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        if (body) {
+            options.body = JSON.stringify(body);
         }
-    };
 
-    if (body) {
-        options.body = JSON.stringify(body);
+        const response = await fetch(`${API_URL}${endpoint}`, options);
+
+        if (!response.ok) {
+            let errorMessage = 'Request failed';
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+            } catch (e) {
+                // Response wasn't JSON, use status text
+                errorMessage = response.statusText || errorMessage;
+            }
+
+            throw new Error(errorMessage);
+        }
+
+        return await response.json();
+    } catch (error) {
+        // Handle network errors
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            throw new Error('Network error. Please check your connection.');
+        }
+        throw error;
+    } finally {
+        // Remove loading state
+        if (buttonElement) {
+            buttonElement.classList.remove('loading');
+            buttonElement.disabled = false;
+        }
     }
-
-    const response = await fetch(`${API_URL}${endpoint}`, options);
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Request failed');
-    }
-
-    return response.json();
 }
+
+// ============================================================================
+// Download Management
+// ============================================================================
 
 async function addDownload(event) {
     event.preventDefault();
 
-    const url = document.getElementById('downloadUrl').value;
-    const folder = document.getElementById('downloadFolder').value;
-    const filename = document.getElementById('downloadFilename').value;
+    const urlField = document.getElementById('downloadUrl');
+    const folderField = document.getElementById('downloadFolder');
+    const filenameField = document.getElementById('downloadFilename');
+    const submitButton = event.target.querySelector('button[type="submit"]');
+
+    const url = urlField.value.trim();
+    const folder = folderField.value.trim();
+    const filename = filenameField.value.trim();
+
+    // Clear previous validation errors
+    clearFieldError('downloadUrl');
+    clearFieldError('downloadFolder');
+
+    // Validate URL
+    const urlError = validateURL(url);
+    if (urlError) {
+        showFieldError('downloadUrl', urlError);
+        showNotification('error', 'Validation Error', urlError);
+        return;
+    }
 
     try {
         const body = { url, folder };
         if (filename) body.filename = filename;
 
-        await apiCall('/downloads', 'POST', body);
+        await apiCall('/downloads', 'POST', body, submitButton);
 
-        // Clear form
-        document.getElementById('downloadUrl').value = '';
-        document.getElementById('downloadFolder').value = '';
-        document.getElementById('downloadFilename').value = '';
+        // Clear form on success
+        urlField.value = '';
+        folderField.value = '';
+        filenameField.value = '';
 
-        alert('Download added successfully!');
+        showNotification('success', 'Download Added', 'Your download has been added to the queue');
     } catch (error) {
-        alert(`Failed to add download: ${error.message}`);
+        showNotification('error', 'Failed to Add Download', error.message);
     }
 }
 
 async function pauseDownload(id) {
     try {
         await apiCall(`/downloads/${id}`, 'PATCH', { action: 'pause' });
+        showNotification('info', 'Download Paused', '', 2000);
     } catch (error) {
-        alert(`Failed to pause download: ${error.message}`);
+        showNotification('error', 'Failed to Pause', error.message);
     }
 }
 
 async function resumeDownload(id) {
     try {
         await apiCall(`/downloads/${id}`, 'PATCH', { action: 'resume' });
+        showNotification('info', 'Download Resumed', '', 2000);
     } catch (error) {
-        alert(`Failed to resume download: ${error.message}`);
+        showNotification('error', 'Failed to Resume', error.message);
     }
 }
 
@@ -237,8 +424,9 @@ async function cancelDownload(id) {
 
     try {
         await apiCall(`/downloads/${id}`, 'DELETE');
+        showNotification('success', 'Download Cancelled', 'Partial file has been deleted', 3000);
     } catch (error) {
-        alert(`Failed to cancel download: ${error.message}`);
+        showNotification('error', 'Failed to Cancel', error.message);
     }
 }
 
@@ -247,8 +435,9 @@ async function removeDownload(id) {
 
     try {
         await apiCall(`/downloads/${id}`, 'DELETE');
+        showNotification('success', 'Download Removed', 'File has been kept on disk', 3000);
     } catch (error) {
-        alert(`Failed to remove download: ${error.message}`);
+        showNotification('error', 'Failed to Remove', error.message);
     }
 }
 
@@ -268,27 +457,58 @@ function updatePauseButton() {
 }
 
 async function togglePauseAll() {
+    const button = document.getElementById('togglePauseBtn');
+
     try {
         if (globalPaused) {
-            await apiCall('/downloads/resume-all', 'POST');
+            await apiCall('/downloads/resume-all', 'POST', null, button);
+            showNotification('success', 'All Downloads Resumed', '', 2000);
         } else {
-            await apiCall('/downloads/pause-all', 'POST');
+            await apiCall('/downloads/pause-all', 'POST', null, button);
+            showNotification('success', 'All Downloads Paused', '', 2000);
         }
     } catch (error) {
-        alert(`Failed to ${globalPaused ? 'resume' : 'pause'} all downloads: ${error.message}`);
+        showNotification('error', `Failed to ${globalPaused ? 'Resume' : 'Pause'} All`, error.message);
     }
 }
 
-async function updateRateLimit() {
-    const value = parseInt(document.getElementById('rateLimit').value) || 0;
-    const unit = parseInt(document.getElementById('rateLimitUnit').value);
-    const bytes = value * unit;
+// ============================================================================
+// Settings Management
+// ============================================================================
+
+async function updateRateLimit(event) {
+    const valueField = document.getElementById('rateLimit');
+    const unitField = document.getElementById('rateLimitUnit');
+    const button = event ? event.target : null; // Get the button that triggered this
+
+    const value = valueField.value.trim();
+    const unit = parseInt(unitField.value);
+
+    // Clear previous validation errors
+    clearFieldError('rateLimit');
+
+    // Validate rate limit
+    const validationError = validateRateLimit(value);
+    if (validationError) {
+        showFieldError('rateLimit', validationError);
+        showNotification('error', 'Validation Error', validationError);
+        return;
+    }
+
+    const bytes = parseInt(value) * unit;
 
     try {
-        await apiCall('/settings', 'PATCH', { global_rate_limit_bps: bytes.toString() });
-        alert('Rate limit updated successfully!');
+        await apiCall('/settings', 'PATCH', { global_rate_limit_bps: bytes.toString() }, button);
+
+        const displayValue = parseInt(value);
+        const unitName = unitField.options[unitField.selectedIndex].text;
+        const message = displayValue === 0 ?
+            'Rate limiting disabled' :
+            `Set to ${displayValue} ${unitName}`;
+
+        showNotification('success', 'Rate Limit Updated', message, 3000);
     } catch (error) {
-        alert(`Failed to update rate limit: ${error.message}`);
+        showNotification('error', 'Failed to Update Rate Limit', error.message);
     }
 }
 
@@ -303,10 +523,55 @@ async function loadSettings() {
         document.getElementById('rateLimit').value = rateLimitMBps;
     } catch (error) {
         console.error('Failed to load settings:', error);
+        showNotification('error', 'Failed to Load Settings', error.message);
     }
 }
 
+// ============================================================================
+// Input Validation on Blur
+// ============================================================================
+
+// Add real-time validation feedback
+document.addEventListener('DOMContentLoaded', () => {
+    const urlField = document.getElementById('downloadUrl');
+    const rateLimitField = document.getElementById('rateLimit');
+
+    if (urlField) {
+        urlField.addEventListener('blur', () => {
+            const value = urlField.value.trim();
+            if (value) {
+                const error = validateURL(value);
+                showFieldError('downloadUrl', error);
+            }
+        });
+
+        urlField.addEventListener('input', () => {
+            // Clear error when user starts typing
+            if (urlField.value.trim()) {
+                clearFieldError('downloadUrl');
+            }
+        });
+    }
+
+    if (rateLimitField) {
+        rateLimitField.addEventListener('blur', () => {
+            const value = rateLimitField.value.trim();
+            if (value) {
+                const error = validateRateLimit(value);
+                showFieldError('rateLimit', error);
+            }
+        });
+
+        rateLimitField.addEventListener('input', () => {
+            clearFieldError('rateLimit');
+        });
+    }
+});
+
+// ============================================================================
 // Initialize
+// ============================================================================
+
 if (API_KEY) {
     connect();
     loadSettings();

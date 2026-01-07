@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
+
     <div class="container">
         <header>
             <h1>Download Manager</h1>
@@ -31,7 +34,7 @@
                         </select>
                     </div>
                 </div>
-                <button onclick="updateRateLimit()">Apply</button>
+                <button onclick="updateRateLimit(event)">Apply</button>
             </div>
         </div>
 
