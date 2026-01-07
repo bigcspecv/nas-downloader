@@ -111,25 +111,57 @@ After completing your step, you MUST:
 - [x] 13. Create `server/static/style.css`
 - [x] 14. Create `server/static/app.js` (WebSocket client, DOM updates)
 
-### Phase 5: UI Refinement & Bug Fixes
+### Phase 5: Critical UI Bug Fixes
 - [x] 15. Fix and test rate limiting (ensure accurate throttling at various speeds)
 - [x] 16. Test and fix pause/resume behavior (individual downloads and global pause)
 - [x] 17. Improve download status display (queued/downloading/paused/completed/failed states)
-- [ ] 18. Add error handling and user feedback (better alerts, status messages)
-- [ ] 19. Test edge cases (network errors, server restart, concurrent downloads, etc.)
-- [ ] 20. UI polish (loading states, animations, responsive design improvements)
+- [ ] 18. Fix progress bar display (currently shows 0.00/0.00 MB even during/after download)
+- [ ] 19. Fix progress data updates (downloaded_bytes, total_bytes, percentage not displaying)
+- [ ] 20. Add error handling and user feedback (better alerts, status messages, validation)
 
-### Phase 6: Chrome Extension
-- [ ] 21. Create `extension/manifest.json` (Manifest V3)
-- [ ] 22. Create `extension/options.html` + `options.js` (server URL, API key config)
-- [ ] 23. Create `extension/background.js` (WebSocket connection, reconnect logic)
-- [ ] 24. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
-- [ ] 25. Create placeholder icons (16, 48, 128px)
+### Phase 6: UX - Multi-User & Real-Time Sync
+- [ ] 21. Broadcast settings changes via WebSocket (rate limit, max concurrent, etc.)
+- [ ] 22. Update UI to reflect settings changes from other users in real-time
+- [ ] 23. Test multi-user scenarios (two browsers, settings sync, download visibility)
 
-### Phase 7: Finalize
-- [ ] 26. Test full flow (docker-compose up, add download, pause/resume, rate limit)
-- [ ] 27. Test extension (connect, add download, verify sync)
-- [ ] 28. Create `README.md`
+### Phase 7: UX - Folder Management Interface
+- [ ] 24. Create folder browser UI component (replace simple text field)
+- [ ] 25. Implement folder navigation (list folders, navigate into subfolders, go up)
+- [ ] 26. Add "New Folder" button within folder browser
+- [ ] 27. Show current path and breadcrumb navigation
+- [ ] 28. Integrate folder browser into "Add Download" form
+
+### Phase 8: UX - Download File Management
+- [ ] 29. Implement in-progress file extension (e.g., .download or .crdownload)
+- [ ] 30. Rename file on completion (remove in-progress extension)
+- [ ] 31. Handle resume/pause with in-progress filenames
+- [ ] 32. Update "Remove" button to offer file deletion option for completed downloads
+- [ ] 33. Add confirmation dialog for file deletion (keep vs delete actual file)
+
+### Phase 9: Testing & Edge Cases
+- [ ] 34. Test network errors (timeout, connection drop, DNS failure)
+- [ ] 35. Test server restart (downloads resume correctly, state preserved)
+- [ ] 36. Test concurrent downloads (queue management, rate limiting applies correctly)
+- [ ] 37. Test disk space issues (handle out-of-space gracefully)
+- [ ] 38. Test invalid URLs and server errors (404, 500, etc.)
+
+### Phase 10: UI Polish
+- [ ] 39. Add loading states (spinners, skeleton screens)
+- [ ] 40. Improve responsive design for mobile/tablet
+- [ ] 41. Add animations for state transitions (smooth progress updates)
+- [ ] 42. Polish visual design (consistent spacing, colors, typography)
+
+### Phase 11: Chrome Extension
+- [ ] 43. Create `extension/manifest.json` (Manifest V3)
+- [ ] 44. Create `extension/options.html` + `options.js` (server URL, API key config)
+- [ ] 45. Create `extension/background.js` (WebSocket connection, reconnect logic)
+- [ ] 46. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
+- [ ] 47. Create placeholder icons (16, 48, 128px)
+
+### Phase 12: Finalize
+- [ ] 48. Test full flow (docker-compose up, add download, pause/resume, rate limit)
+- [ ] 49. Test extension (connect, add download, verify sync)
+- [ ] 50. Create `README.md`
 
 ---
 
@@ -155,6 +187,7 @@ After completing your step, you MUST:
 | 14 | Created server/static/app.js by extracting all JavaScript from index.html. Implements WebSocket client with auto-reconnection (exponential backoff up to 30s, max 10 attempts), real-time download rendering, API key authentication (URL hash or prompt), API wrapper functions for all download/settings operations, DOM manipulation for progress bars and status updates, ETA/speed formatting, HTML escaping for XSS protection. Updated index.html to link to external script. |
 | 14+ | Fixed multiple UI bugs: 1) Fixed static file paths to use /static/ prefix for Flask serving. 2) Fixed NaN display for queued downloads by handling null bytes. 3) Fixed pause/resume button logic - queued and paused downloads show correct buttons. 4) Fixed global_paused behavior - new downloads start paused when global pause enabled, resume_download bypasses global pause and starts immediately. 5) Converted Pause All/Resume All to single toggle button that tracks server state via WebSocket. 6) Fixed rate limiting - improved algorithm to calculate expected time and sleep accurately, dynamic chunk sizing based on rate limit. 7) Fixed settings update to apply immediately to download_manager in-memory state. |
 | 15-17 | Completed Phase 5 initial refinement: Verified rate limiting works accurately with various speeds (1KB/s to 100KB/s+), confirmed pause/resume behavior for individual downloads and global pause toggle, validated download status display shows correct buttons and data for all states (queued/downloading/paused/completed/failed). All core functionality tested and working. |
+| 18 | Restructured project phases based on UX/UI assessment. Split original Phase 5 into 6 focused phases: Phase 5 (Critical UI Bug Fixes - progress bar display), Phase 6 (Multi-User Real-Time Sync - settings broadcast), Phase 7 (Folder Management Interface - browser UI), Phase 8 (Download File Management - in-progress extensions), Phase 9 (Testing & Edge Cases), Phase 10 (UI Polish). Renumbered Chrome Extension to Phase 11 and Finalize to Phase 12. Total checklist now has 50 steps instead of 28. |
 
 ---
 
@@ -186,6 +219,7 @@ After completing your step, you MUST:
 | Per-second byte tracking for rate limiting | Simple rate limiting implementation that sleeps when limit exceeded in current second, resets counter every second | 8 |
 | WebSocket auth via query parameter | Using /ws?api_key=xxx for WebSocket auth instead of HTTP headers - simpler for clients and supported by all WebSocket clients (browsers, extensions, etc.) | 11 |
 | 1-second broadcast interval | Balances real-time updates with server load - 1 second provides smooth progress updates without excessive messages | 11 |
+| Restructure Phase 5 into 6 focused phases | Original Phase 5 was too broad. Splitting into specific phases (Critical Bugs, Multi-User Sync, Folder UI, File Management, Testing, Polish) provides clearer scope, better progress tracking, and ensures UX issues are addressed systematically before moving to Chrome extension | 18 |
 
 ---
 
