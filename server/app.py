@@ -542,14 +542,24 @@ def websocket_handler(ws):
     api_key = request.args.get('api_key')
 
     if not api_key:
-        ws.send(json.dumps({'error': 'Missing api_key query parameter'}))
-        ws.close(reason='Authentication required')
+        try:
+            ws.send(json.dumps({'type': 'auth_error', 'error': 'Missing API key'}))
+            import time
+            time.sleep(0.01)  # Small delay to ensure message is sent
+        except:
+            pass
+        ws.close()
         return
 
     # Constant-time comparison to prevent timing attacks
     if not compare_digest(api_key, API_KEY):
-        ws.send(json.dumps({'error': 'Invalid API key'}))
-        ws.close(reason='Invalid credentials')
+        try:
+            ws.send(json.dumps({'type': 'auth_error', 'error': 'Invalid API key'}))
+            import time
+            time.sleep(0.01)  # Small delay to ensure message is sent
+        except:
+            pass
+        ws.close()
         return
 
     # Add client to the set of connected clients

@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 24 <!-- CURRENT-STEP -->
+## Current Step: 26 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -172,45 +172,46 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 21. Broadcast settings changes via WebSocket (rate limit, max concurrent, etc.)
 - [x] 22. Update UI to reflect settings changes from other users in real-time
 - [x] 23. Test multi-user scenarios (two browsers, settings sync, download visibility)
+- [x] 24. Overhaul WebUI
 
 ### Phase 7: UX - Folder Management Interface
-- [ ] 24. Create folder browser UI component (replace simple text field)
-- [ ] 25. Implement folder navigation (list folders, navigate into subfolders, go up)
-- [ ] 26. Add "New Folder" button within folder browser
-- [ ] 27. Show current path and breadcrumb navigation
-- [ ] 28. Integrate folder browser into "Add Download" form
+- [ ] 25. Create folder browser UI component (replace simple text field)
+- [ ] 26. Implement folder navigation (list folders, navigate into subfolders, go up)
+- [ ] 27. Add "New Folder" button within folder browser
+- [ ] 28. Show current path and breadcrumb navigation
+- [ ] 29. Integrate folder browser into "Add Download" form
 
 ### Phase 8: UX - Download File Management
-- [ ] 29. Implement in-progress file extension (e.g., .download or .crdownload)
-- [ ] 30. Rename file on completion (remove in-progress extension)
-- [ ] 31. Handle resume/pause with in-progress filenames
-- [ ] 32. Update "Remove" button to offer file deletion option for completed downloads
-- [ ] 33. Add confirmation dialog for file deletion (keep vs delete actual file)
+- [ ] 30. Implement in-progress file extension (e.g., .download or .crdownload)
+- [ ] 31. Rename file on completion (remove in-progress extension)
+- [ ] 32. Handle resume/pause with in-progress filenames
+- [ ] 33. Update "Remove" button to offer file deletion option for completed downloads
+- [ ] 34. Add confirmation dialog for file deletion (keep vs delete actual file)
 
 ### Phase 9: Testing & Edge Cases
-- [ ] 34. Test network errors (timeout, connection drop, DNS failure)
-- [ ] 35. Test server restart (downloads resume correctly, state preserved)
-- [ ] 36. Test concurrent downloads (queue management, rate limiting applies correctly)
-- [ ] 37. Test disk space issues (handle out-of-space gracefully)
-- [ ] 38. Test invalid URLs and server errors (404, 500, etc.)
+- [ ] 35. Test network errors (timeout, connection drop, DNS failure)
+- [ ] 36. Test server restart (downloads resume correctly, state preserved)
+- [ ] 37. Test concurrent downloads (queue management, rate limiting applies correctly)
+- [ ] 38. Test disk space issues (handle out-of-space gracefully)
+- [ ] 39. Test invalid URLs and server errors (404, 500, etc.)
 
 ### Phase 10: UI Polish
-- [ ] 39. Add loading states (spinners, skeleton screens)
-- [ ] 40. Improve responsive design for mobile/tablet
-- [ ] 41. Add animations for state transitions (smooth progress updates)
-- [ ] 42. Polish visual design (consistent spacing, colors, typography)
+- [ ] 40. Add loading states (spinners, skeleton screens)
+- [ ] 41. Improve responsive design for mobile/tablet
+- [ ] 42. Add animations for state transitions (smooth progress updates)
+- [ ] 43. Polish visual design (consistent spacing, colors, typography)
 
 ### Phase 11: Chrome Extension
-- [ ] 43. Create `extension/manifest.json` (Manifest V3)
-- [ ] 44. Create `extension/options.html` + `options.js` (server URL, API key config)
-- [ ] 45. Create `extension/background.js` (WebSocket connection, reconnect logic)
-- [ ] 46. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
-- [ ] 47. Create placeholder icons (16, 48, 128px)
+- [ ] 44. Create `extension/manifest.json` (Manifest V3)
+- [ ] 45. Create `extension/options.html` + `options.js` (server URL, API key config)
+- [ ] 46. Create `extension/background.js` (WebSocket connection, reconnect logic)
+- [ ] 47. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
+- [ ] 48. Create placeholder icons (16, 48, 128px)
 
 ### Phase 12: Finalize
-- [ ] 48. Test full flow (docker-compose up, add download, pause/resume, rate limit)
-- [ ] 49. Test extension (connect, add download, verify sync)
-- [ ] 50. Create `README.md`
+- [ ] 49. Test full flow (docker-compose up, add download, pause/resume, rate limit)
+- [ ] 50. Test extension (connect, add download, verify sync)
+- [ ] 51. Create `README.md`
 
 ---
 
@@ -221,9 +222,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 21 | Added WebSocket broadcasting for settings changes. Server broadcasts settings_update messages when settings are modified via PATCH /api/settings. Frontend handles settings_update messages and updates UI (rate limit field) automatically for real-time multi-user sync. |
-| 22 | Added max concurrent downloads UI control with validation, update function, and real-time sync via WebSocket. All settings (rate limit and max concurrent) now update automatically across all connected users when changed. |
 | 23 | Fixed resume_all to respect max_concurrent_downloads limit. Changed resume_all to set paused downloads to queued status instead of starting them immediately, allowing process_queue to enforce concurrency limits properly. |
+| 24 | Overhauled WebUI with unique dark theme design: left sidebar navigation with categories (All/Active/Completed/Paused/Failed), teal/cyan gradient accent colors, table-based download list, toolbar with New Download/Pause All/Delete buttons, always-visible search, modals for add download and settings, bottom status bar showing global speed and active downloads. Replaced generic Free Download Manager clone with unique nas-downloader branding. |
+| 24 | Completed WebUI overhaul with custom modal system and authentication error handling. Created generic dialog modal (confirm/prompt/alert) with keyboard support and danger mode, replacing all standard JS dialogs. Fixed WebSocket auth failures to send auth_error message type, stop reconnect loop, and prompt for new API key using custom modal. |
 <!-- CONTEXT-END -->
 
 ---
@@ -242,6 +243,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 14: Rate limiting with large chunk sizes is ineffective. Adjust chunk size based on rate limit (e.g., rate_limit/4) to enable smooth throttling. Calculate expected download time vs actual time and sleep the difference for accurate rate limiting.
 - Step 14: When creating Download objects, the __init__ method sets default values (like status='queued'). Always override these with actual database values after construction to preserve saved state.
 - Step 23: resume_all() must not call resume_download() for each download, as resume_download() bypasses the queue and concurrency limits. Instead, change paused downloads to queued status and let process_queue() enforce limits.
+- Step 24: simple_websocket library: Using ws.close(reason=1008, message='...') causes 'Invalid frame header' errors. Sending a message immediately before close also breaks the close handshake. Solution: send auth_error message type, add small delay (10ms), then call ws.close() without parameters. Client detects message type instead of close code.
 <!-- LESSONS-END -->
 
 ---
@@ -262,6 +264,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | 1-second broadcast interval | Balances real-time updates with server load - 1 second provides smooth progress updates without excessive messages | 11 |
 | Restructure Phase 5 into 6 focused phases | Original Phase 5 was too broad. Splitting into specific phases (Critical Bugs, Multi-User Sync, Folder UI, File Management, Testing, Polish) provides clearer scope, better progress tracking, and ensures UX issues are addressed systematically before moving to Chrome extension | 18 |
 | Toast notification system instead of browser alerts | Provides better UX with non-blocking notifications, auto-dismiss after timeout, visual feedback with icons/colors for different message types (success/error/warning/info), and allows multiple notifications to stack | 20 |
+| Use auth_error message type instead of WebSocket close codes for authentication failures | simple_websocket library has issues with custom close codes and sending messages before close. Message-based approach is more reliable and allows sending detailed error information before closing connection | 24 |
 <!-- DECISIONS-END -->
 
 ---

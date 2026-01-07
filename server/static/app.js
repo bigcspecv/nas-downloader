@@ -3,22 +3,196 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 let downloads = [];
 let globalPaused = false;
+let currentFilter = 'all';
+let searchQuery = '';
+let selectedDownloads = new Set();
 
-// Configuration - modify these if needed
+// Configuration
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
                window.location.host + '/ws';
 const API_URL = window.location.origin + '/api';
 
 // Get API key from URL hash or prompt user
 let API_KEY = window.location.hash.substring(1);
-if (!API_KEY) {
-    API_KEY = prompt('Enter API Key:');
-    if (!API_KEY) {
-        showNotification('error', 'Authentication Required', 'API key is required to use the download manager.');
+
+// ============================================================================
+// Generic Dialog Modal System
+// ============================================================================
+
+let dialogResolve = null;
+let dialogReject = null;
+
+function showDialog(options) {
+    return new Promise((resolve, reject) => {
+        dialogResolve = resolve;
+        dialogReject = reject;
+
+        const modal = document.getElementById('dialogModal');
+        const title = document.getElementById('dialogTitle');
+        const message = document.getElementById('dialogMessage');
+        const inputContainer = document.getElementById('dialogInputContainer');
+        const input = document.getElementById('dialogInput');
+        const cancelBtn = document.getElementById('dialogCancelBtn');
+        const confirmBtn = document.getElementById('dialogConfirmBtn');
+
+        title.textContent = options.title || 'Confirm';
+        message.textContent = options.message || '';
+
+        // Configure for different dialog types
+        if (options.type === 'prompt') {
+            inputContainer.style.display = 'block';
+            input.value = options.defaultValue || '';
+            input.type = options.inputType || 'text';
+            input.placeholder = options.placeholder || '';
+            cancelBtn.style.display = 'inline-block';
+            confirmBtn.textContent = options.confirmText || 'OK';
+        } else if (options.type === 'confirm') {
+            inputContainer.style.display = 'none';
+            cancelBtn.style.display = 'inline-block';
+            confirmBtn.textContent = options.confirmText || 'Confirm';
+        } else { // alert
+            inputContainer.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            confirmBtn.textContent = 'OK';
+        }
+
+        // Add danger class if needed
+        if (options.danger) {
+            confirmBtn.classList.remove('btn-primary');
+            confirmBtn.classList.add('btn-danger');
+        } else {
+            confirmBtn.classList.remove('btn-danger');
+            confirmBtn.classList.add('btn-primary');
+        }
+
+        modal.classList.add('active');
+
+        // Focus input if prompt and add Enter key handler
+        if (options.type === 'prompt') {
+            setTimeout(() => {
+                input.focus();
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmDialog();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeDialog();
+                    }
+                };
+            }, 100);
+        }
+
+        // Add Escape key handler for all dialog types
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    });
+}
+
+function confirmDialog() {
+    const inputContainer = document.getElementById('dialogInputContainer');
+    const input = document.getElementById('dialogInput');
+
+    if (inputContainer.style.display === 'block') {
+        // Prompt mode - return input value
+        if (dialogResolve) {
+            dialogResolve(input.value);
+        }
     } else {
-        // Store in URL hash for convenience (not secure, but this is for local use)
-        window.location.hash = API_KEY;
+        // Confirm/Alert mode - return true
+        if (dialogResolve) {
+            dialogResolve(true);
+        }
     }
+
+    closeDialog();
+}
+
+function closeDialog() {
+    const modal = document.getElementById('dialogModal');
+    const input = document.getElementById('dialogInput');
+
+    modal.classList.remove('active');
+
+    // Clean up event handlers
+    input.onkeydown = null;
+
+    if (dialogResolve) {
+        const inputContainer = document.getElementById('dialogInputContainer');
+        if (inputContainer.style.display === 'block') {
+            // Prompt mode - return null on cancel
+            dialogResolve(null);
+        } else {
+            // Confirm mode - return false on cancel
+            dialogResolve(false);
+        }
+    }
+
+    dialogResolve = null;
+    dialogReject = null;
+}
+
+// Helper functions
+function showConfirm(message, title = 'Confirm', danger = false) {
+    return showDialog({
+        type: 'confirm',
+        title: title,
+        message: message,
+        danger: danger
+    });
+}
+
+function showPrompt(message, title = 'Input', defaultValue = '', placeholder = '') {
+    return showDialog({
+        type: 'prompt',
+        title: title,
+        message: message,
+        defaultValue: defaultValue,
+        placeholder: placeholder
+    });
+}
+
+function showAlert(message, title = 'Alert') {
+    return showDialog({
+        type: 'alert',
+        title: title,
+        message: message
+    });
+}
+
+// Initialize - get API key
+async function initializeApiKey() {
+    if (!API_KEY) {
+        API_KEY = await showPrompt(
+            'Please enter your API key to continue',
+            'Authentication Required',
+            '',
+            'API Key'
+        );
+
+        if (!API_KEY) {
+            showNotification('error', 'Authentication Required', 'API key is required.');
+        } else {
+            window.location.hash = API_KEY;
+            connect();
+            loadSettings();
+        }
+    } else {
+        connect();
+        loadSettings();
+    }
+}
+
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApiKey);
+} else {
+    initializeApiKey();
 }
 
 // ============================================================================
@@ -48,7 +222,6 @@ function showNotification(type, title, message, duration = 5000) {
 
     container.appendChild(notification);
 
-    // Auto-remove after duration
     if (duration > 0) {
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -56,73 +229,6 @@ function showNotification(type, title, message, duration = 5000) {
             setTimeout(() => notification.remove(), 300);
         }, duration);
     }
-}
-
-// ============================================================================
-// Form Validation
-// ============================================================================
-
-function validateURL(url) {
-    if (!url || url.trim() === '') {
-        return 'URL is required';
-    }
-
-    try {
-        const urlObj = new URL(url);
-        if (!['http:', 'https:'].includes(urlObj.protocol)) {
-            return 'URL must use HTTP or HTTPS protocol';
-        }
-        return null; // Valid
-    } catch (e) {
-        return 'Please enter a valid URL';
-    }
-}
-
-function validateRateLimit(value) {
-    const num = parseInt(value);
-    if (isNaN(num)) {
-        return 'Rate limit must be a number';
-    }
-    if (num < 0) {
-        return 'Rate limit must be 0 or greater';
-    }
-    return null; // Valid
-}
-
-function validateMaxConcurrent(value) {
-    const num = parseInt(value);
-    if (isNaN(num)) {
-        return 'Max concurrent downloads must be a number';
-    }
-    if (num < 1) {
-        return 'Max concurrent downloads must be at least 1';
-    }
-    return null; // Valid
-}
-
-function showFieldError(fieldId, errorMessage) {
-    const field = document.getElementById(fieldId);
-    const controlGroup = field.closest('.control-group');
-
-    // Remove existing error
-    const existingError = controlGroup.querySelector('.validation-error');
-    if (existingError) {
-        existingError.remove();
-    }
-
-    if (errorMessage) {
-        controlGroup.classList.add('error');
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'validation-error';
-        errorDiv.textContent = errorMessage;
-        controlGroup.appendChild(errorDiv);
-    } else {
-        controlGroup.classList.remove('error');
-    }
-}
-
-function clearFieldError(fieldId) {
-    showFieldError(fieldId, null);
 }
 
 // ============================================================================
@@ -138,7 +244,7 @@ function connect() {
         ws = new WebSocket(wsUrl);
     } catch (error) {
         console.error('Failed to create WebSocket:', error);
-        showNotification('error', 'Connection Failed', 'Unable to connect to server. Please check your network connection.');
+        showNotification('error', 'Connection Failed', 'Unable to connect to server.');
         updateConnectionStatus(false);
         scheduleReconnect();
         return;
@@ -148,7 +254,6 @@ function connect() {
         console.log('WebSocket connected');
         updateConnectionStatus(true);
         reconnectAttempts = 0;
-        showNotification('success', 'Connected', 'Real-time updates enabled', 3000);
     };
 
     ws.onmessage = (event) => {
@@ -162,16 +267,15 @@ function connect() {
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        // Don't show notification on every error - wait for onclose
     };
 
     ws.onclose = (event) => {
         console.log('WebSocket disconnected', event.code, event.reason);
         updateConnectionStatus(false);
 
-        // Only show notification if not a clean close
+        // Don't show reconnecting notification if we've hit max attempts (e.g., auth failure)
         if (event.code !== 1000 && reconnectAttempts === 0) {
-            showNotification('warning', 'Disconnected', 'Connection to server lost. Attempting to reconnect...', 3000);
+            showNotification('warning', 'Disconnected', 'Reconnecting...', 3000);
         }
 
         scheduleReconnect();
@@ -182,10 +286,9 @@ function scheduleReconnect() {
     if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-        console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
         setTimeout(connect, delay);
     } else {
-        showNotification('error', 'Connection Failed', 'Could not reconnect to server after multiple attempts. Please refresh the page.', 0);
+        showNotification('error', 'Connection Failed', 'Could not reconnect. Please refresh.', 0);
     }
 }
 
@@ -194,12 +297,45 @@ function handleWebSocketMessage(data) {
         downloads = data.downloads || [];
         globalPaused = data.global_paused || false;
         renderDownloads();
+        updateStatusBar();
+        updateCategoryCounts();
         updatePauseButton();
     } else if (data.type === 'settings_update') {
-        // Settings were changed by another user or session
         updateSettingsUI(data.settings);
+    } else if (data.type === 'auth_error') {
+        // Authentication failed - stop reconnecting
+        console.error('Authentication error:', data.error);
+        reconnectAttempts = maxReconnectAttempts; // Prevent reconnection
+
+        // Clear the invalid API key
+        window.location.hash = '';
+        API_KEY = null;
+
+        // Close the current connection
+        if (ws) {
+            ws.close();
+        }
+
+        // Prompt for new API key
+        setTimeout(async () => {
+            const newKey = await showPrompt(
+                'Your API key was invalid. Please enter the correct API key.',
+                'Authentication Failed',
+                '',
+                'API Key'
+            );
+
+            if (newKey) {
+                API_KEY = newKey;
+                window.location.hash = newKey;
+                reconnectAttempts = 0;
+                connect();
+                loadSettings();
+            }
+        }, 500);
     } else if (data.error) {
         console.error('WebSocket error:', data.error);
+        showNotification('error', 'Server Error', data.error);
     }
 }
 
@@ -215,7 +351,7 @@ function updateConnectionStatus(connected) {
         if (reconnectAttempts > 0 && reconnectAttempts < maxReconnectAttempts) {
             text.textContent = 'Reconnecting...';
         } else if (reconnectAttempts >= maxReconnectAttempts) {
-            text.textContent = 'Connection Failed';
+            text.textContent = 'Failed';
         } else {
             text.textContent = 'Disconnected';
         }
@@ -223,90 +359,162 @@ function updateConnectionStatus(connected) {
 }
 
 // ============================================================================
+// Category Navigation
+// ============================================================================
+
+function switchCategory(filter) {
+    currentFilter = filter;
+
+    // Update active state
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.filter === filter) {
+            item.classList.add('active');
+        }
+    });
+
+    renderDownloads();
+}
+
+function updateCategoryCounts() {
+    const counts = {
+        all: downloads.length,
+        active: downloads.filter(d => d.status === 'downloading' || d.status === 'queued').length,
+        completed: downloads.filter(d => d.status === 'completed').length,
+        paused: downloads.filter(d => d.status === 'paused').length,
+        failed: downloads.filter(d => d.status === 'failed').length
+    };
+
+    document.getElementById('countAll').textContent = counts.all;
+    document.getElementById('countActive').textContent = counts.active;
+    document.getElementById('countCompleted').textContent = counts.completed;
+    document.getElementById('countPaused').textContent = counts.paused;
+    document.getElementById('countFailed').textContent = counts.failed;
+}
+
+function filterDownloads() {
+    searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    renderDownloads();
+}
+
+function getFilteredDownloads() {
+    let filtered = downloads;
+
+    // Apply category filter
+    if (currentFilter === 'active') {
+        filtered = filtered.filter(d => d.status === 'downloading' || d.status === 'queued');
+    } else if (currentFilter !== 'all') {
+        filtered = filtered.filter(d => d.status === currentFilter);
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+        filtered = filtered.filter(d =>
+            d.filename.toLowerCase().includes(searchQuery) ||
+            d.url.toLowerCase().includes(searchQuery) ||
+            (d.folder && d.folder.toLowerCase().includes(searchQuery))
+        );
+    }
+
+    return filtered;
+}
+
+// ============================================================================
 // UI Rendering
 // ============================================================================
 
 function renderDownloads() {
-    const container = document.getElementById('downloadsList');
+    const container = document.getElementById('downloadsTable');
+    const filtered = getFilteredDownloads();
 
-    if (downloads.length === 0) {
-        container.innerHTML = '<div class="empty-state">No downloads yet. Add one above to get started.</div>';
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                    <circle cx="32" cy="32" r="28" stroke="url(#grad2)" stroke-width="2"/>
+                    <path d="M32 18v20m0 0l-7-7m7 7l7-7" stroke="url(#grad2)" stroke-width="2" stroke-linecap="round"/>
+                    <defs>
+                        <linearGradient id="grad2" x1="0" y1="0" x2="64" y2="64">
+                            <stop offset="0%" stop-color="#14b8a6"/>
+                            <stop offset="100%" stop-color="#0891b2"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <p>No downloads ${currentFilter !== 'all' ? 'in this category' : 'yet'}</p>
+                <p class="hint">Click "New Download" to get started</p>
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = downloads.map(download => {
-        // Access progress data from nested object
+    container.innerHTML = filtered.map(download => {
         const progress = download.progress || {};
-        const downloadedBytes = progress.downloaded_bytes || 0;
         const totalBytes = progress.total_bytes || 0;
         const percentage = progress.percentage || 0;
         const speedBps = progress.speed_bps || 0;
-        const etaSeconds = progress.eta_seconds || 0;
 
-        const speedMBps = (speedBps / 1048576).toFixed(2);
-        const downloadedMB = (downloadedBytes / 1048576).toFixed(2);
         const totalMB = totalBytes > 0 ? (totalBytes / 1048576).toFixed(2) : '?';
-        const eta = formatETA(etaSeconds);
+        const speedMBps = (speedBps / 1048576).toFixed(2);
 
-        let progressClass = '';
-        if (download.status === 'completed') progressClass = 'completed';
-        if (download.status === 'failed') progressClass = 'failed';
-        if (download.status === 'paused') progressClass = 'paused';
-
-        const errorMsg = download.error_message ?
-            `<div class="error-message">${escapeHtml(download.error_message)}</div>` : '';
+        const progressClass = getProgressClass(download.status);
+        const isSelected = selectedDownloads.has(download.id);
 
         return `
-            <div class="download-item">
-                <div class="download-header">
+            <div class="download-row ${isSelected ? 'selected' : ''}" data-id="${download.id}">
+                <div class="td td-checkbox">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''}
+                           onchange="toggleDownloadSelection('${download.id}', this.checked)">
+                </div>
+                <div class="td">
                     <div class="download-info">
-                        <div class="download-filename">${escapeHtml(download.filename)}</div>
-                        <div class="download-url">${escapeHtml(download.url)}</div>
+                        <div class="download-name" title="${escapeHtml(download.filename)}">
+                            ${escapeHtml(download.filename)}
+                        </div>
+                        <div class="download-url" title="${escapeHtml(download.url)}">
+                            ${escapeHtml(download.url)}
+                        </div>
                         ${download.folder ? `<div class="download-folder">📁 ${escapeHtml(download.folder)}</div>` : ''}
                     </div>
+                </div>
+                <div class="td">
+                    <div class="download-size">${totalBytes > 0 ? totalMB + ' MB' : 'Unknown'}</div>
+                </div>
+                <div class="td">
+                    <div class="download-progress">
+                        <div class="progress-text">${percentage.toFixed(1)}%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progressClass}" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="td">
+                    <div class="download-speed ${speedBps > 0 ? '' : 'inactive'}">
+                        ${speedBps > 0 ? speedMBps + ' MB/s' : '-'}
+                    </div>
+                </div>
+                <div class="td">
                     <div class="download-actions">
                         ${download.status === 'downloading' || download.status === 'queued' ?
-                            `<button onclick="pauseDownload('${download.id}')">Pause</button>` : ''}
+                            `<button class="btn-icon" onclick="pauseDownload('${download.id}')">Pause</button>` : ''}
                         ${download.status === 'paused' ?
-                            `<button onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
+                            `<button class="btn-icon" onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
                         ${download.status !== 'completed' ?
-                            `<button class="danger" onclick="cancelDownload('${download.id}')">Cancel</button>` :
-                            `<button class="danger" onclick="removeDownload('${download.id}')">Remove</button>`}
+                            `<button class="btn-icon btn-danger" onclick="cancelDownload('${download.id}')">Cancel</button>` :
+                            `<button class="btn-icon btn-danger" onclick="removeDownload('${download.id}')">Remove</button>`}
                     </div>
                 </div>
-                <div class="download-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill ${progressClass}" style="width: ${percentage}%"></div>
-                    </div>
-                    <div class="download-stats">
-                        <span>
-                            <span class="status-badge ${download.status}">${download.status}</span>
-                            ${totalBytes > 0 ?
-                                `${downloadedMB} / ${totalMB} MB (${percentage}%)` :
-                                `${downloadedMB} MB (size unknown)`}
-                        </span>
-                        <span>
-                            ${download.status === 'downloading' ?
-                                `⚡ ${speedMBps} MB/s • ETA: ${eta}` :
-                                (download.status === 'paused' && speedBps > 0) ?
-                                `⚡ Last speed: ${speedMBps} MB/s` :
-                                ''}
-                        </span>
-                    </div>
-                </div>
-                ${errorMsg}
             </div>
         `;
     }).join('');
+
+    updateSelectAllCheckbox();
 }
 
-function formatETA(seconds) {
-    if (!seconds || seconds <= 0) return '--';
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
+function getProgressClass(status) {
+    if (status === 'completed') return 'completed';
+    if (status === 'failed') return 'failed';
+    if (status === 'paused') return 'paused';
+    return '';
 }
 
 function escapeHtml(text) {
@@ -316,11 +524,172 @@ function escapeHtml(text) {
 }
 
 // ============================================================================
-// API Calls with Loading States
+// Selection Management
+// ============================================================================
+
+function toggleDownloadSelection(id, checked) {
+    if (checked) {
+        selectedDownloads.add(id);
+    } else {
+        selectedDownloads.delete(id);
+    }
+    renderDownloads();
+}
+
+function toggleSelectAll(checked) {
+    const filtered = getFilteredDownloads();
+    selectedDownloads.clear();
+
+    if (checked) {
+        filtered.forEach(d => selectedDownloads.add(d.id));
+    }
+
+    renderDownloads();
+}
+
+function updateSelectAllCheckbox() {
+    const selectAll = document.getElementById('selectAll');
+    const filtered = getFilteredDownloads();
+
+    if (filtered.length === 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    } else {
+        const selectedCount = filtered.filter(d => selectedDownloads.has(d.id)).length;
+        selectAll.checked = selectedCount === filtered.length;
+        selectAll.indeterminate = selectedCount > 0 && selectedCount < filtered.length;
+    }
+}
+
+// ============================================================================
+// Status Bar
+// ============================================================================
+
+function updateStatusBar() {
+    let totalSpeed = 0;
+    let activeCount = 0;
+
+    downloads.forEach(d => {
+        if (d.status === 'downloading') {
+            activeCount++;
+            const progress = d.progress || {};
+            totalSpeed += progress.speed_bps || 0;
+        }
+    });
+
+    const speedElement = document.getElementById('globalDownloadSpeed');
+    if (totalSpeed > 0) {
+        const speedMBps = (totalSpeed / 1048576).toFixed(2);
+        speedElement.textContent = `${speedMBps} MB/s`;
+    } else {
+        speedElement.textContent = '0 B/s';
+    }
+
+    const activeElement = document.getElementById('activeDownloadsCount');
+    activeElement.textContent = `${activeCount} active download${activeCount !== 1 ? 's' : ''}`;
+}
+
+// ============================================================================
+// Toolbar Actions
+// ============================================================================
+
+async function deleteSelected() {
+    if (selectedDownloads.size === 0) {
+        showNotification('warning', 'No Selection', 'Please select downloads to delete');
+        return;
+    }
+
+    const confirmed = await showConfirm(
+        `Are you sure you want to delete ${selectedDownloads.size} selected download(s)?`,
+        'Delete Downloads',
+        true
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const promises = Array.from(selectedDownloads).map(id =>
+        apiCall(`/downloads/${id}`, 'DELETE').catch(err => {
+            console.error(`Failed to delete ${id}:`, err);
+        })
+    );
+
+    Promise.all(promises).then(() => {
+        showNotification('success', 'Deleted', `${selectedDownloads.size} download(s) deleted`);
+        selectedDownloads.clear();
+    });
+}
+
+function updatePauseButton() {
+    const button = document.getElementById('playPauseBtn');
+
+    if (globalPaused) {
+        button.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 4l9 5-9 5V4z" fill="currentColor"/>
+            </svg>
+            Resume All
+        `;
+    } else {
+        button.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M6 5v8M12 5v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Pause All
+        `;
+    }
+}
+
+async function togglePauseAll() {
+    try {
+        if (globalPaused) {
+            await apiCall('/downloads/resume-all', 'POST');
+            showNotification('success', 'All Downloads Resumed', '', 2000);
+        } else {
+            await apiCall('/downloads/pause-all', 'POST');
+            showNotification('success', 'All Downloads Paused', '', 2000);
+        }
+    } catch (error) {
+        showNotification('error', `Failed to ${globalPaused ? 'Resume' : 'Pause'} All`, error.message);
+    }
+}
+
+// ============================================================================
+// Modal Management
+// ============================================================================
+
+function openAddDownloadModal() {
+    const modal = document.getElementById('addDownloadModal');
+    modal.classList.add('active');
+    document.getElementById('downloadUrl').focus();
+}
+
+function closeAddDownloadModal() {
+    const modal = document.getElementById('addDownloadModal');
+    modal.classList.remove('active');
+
+    document.getElementById('downloadUrl').value = '';
+    document.getElementById('downloadFolder').value = '';
+    document.getElementById('downloadFilename').value = '';
+}
+
+function openSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    modal.classList.add('active');
+    loadSettings();
+}
+
+function closeSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    modal.classList.remove('active');
+}
+
+// ============================================================================
+// API Calls
 // ============================================================================
 
 async function apiCall(endpoint, method = 'GET', body = null, buttonElement = null) {
-    // Show loading state on button if provided
     if (buttonElement) {
         buttonElement.classList.add('loading');
         buttonElement.disabled = true;
@@ -347,22 +716,18 @@ async function apiCall(endpoint, method = 'GET', body = null, buttonElement = nu
                 const error = await response.json();
                 errorMessage = error.error || errorMessage;
             } catch (e) {
-                // Response wasn't JSON, use status text
                 errorMessage = response.statusText || errorMessage;
             }
-
             throw new Error(errorMessage);
         }
 
         return await response.json();
     } catch (error) {
-        // Handle network errors
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error('Network error. Please check your connection.');
         }
         throw error;
     } finally {
-        // Remove loading state
         if (buttonElement) {
             buttonElement.classList.remove('loading');
             buttonElement.disabled = false;
@@ -380,36 +745,19 @@ async function addDownload(event) {
     const urlField = document.getElementById('downloadUrl');
     const folderField = document.getElementById('downloadFolder');
     const filenameField = document.getElementById('downloadFilename');
-    const submitButton = event.target.querySelector('button[type="submit"]');
 
     const url = urlField.value.trim();
     const folder = folderField.value.trim();
     const filename = filenameField.value.trim();
 
-    // Clear previous validation errors
-    clearFieldError('downloadUrl');
-    clearFieldError('downloadFolder');
-
-    // Validate URL
-    const urlError = validateURL(url);
-    if (urlError) {
-        showFieldError('downloadUrl', urlError);
-        showNotification('error', 'Validation Error', urlError);
-        return;
-    }
-
     try {
         const body = { url, folder };
         if (filename) body.filename = filename;
 
-        await apiCall('/downloads', 'POST', body, submitButton);
+        await apiCall('/downloads', 'POST', body);
 
-        // Clear form on success
-        urlField.value = '';
-        folderField.value = '';
-        filenameField.value = '';
-
-        showNotification('success', 'Download Added', 'Your download has been added to the queue');
+        closeAddDownloadModal();
+        showNotification('success', 'Download Added', 'Your download has been queued');
     } catch (error) {
         showNotification('error', 'Failed to Add Download', error.message);
     }
@@ -418,7 +766,6 @@ async function addDownload(event) {
 async function pauseDownload(id) {
     try {
         await apiCall(`/downloads/${id}`, 'PATCH', { action: 'pause' });
-        showNotification('info', 'Download Paused', '', 2000);
     } catch (error) {
         showNotification('error', 'Failed to Pause', error.message);
     }
@@ -427,62 +774,42 @@ async function pauseDownload(id) {
 async function resumeDownload(id) {
     try {
         await apiCall(`/downloads/${id}`, 'PATCH', { action: 'resume' });
-        showNotification('info', 'Download Resumed', '', 2000);
     } catch (error) {
         showNotification('error', 'Failed to Resume', error.message);
     }
 }
 
 async function cancelDownload(id) {
-    if (!confirm('Cancel this download and delete the partial file?')) return;
+    const confirmed = await showConfirm(
+        'Are you sure you want to cancel this download and delete the partial file?',
+        'Cancel Download',
+        true
+    );
+
+    if (!confirmed) return;
 
     try {
         await apiCall(`/downloads/${id}`, 'DELETE');
-        showNotification('success', 'Download Cancelled', 'Partial file has been deleted', 3000);
+        showNotification('success', 'Download Cancelled', '');
     } catch (error) {
         showNotification('error', 'Failed to Cancel', error.message);
     }
 }
 
 async function removeDownload(id) {
-    if (!confirm('Remove this download from the list? (file will be kept)')) return;
+    const confirmed = await showConfirm(
+        'Are you sure you want to remove this download from the list?',
+        'Remove Download',
+        false
+    );
+
+    if (!confirmed) return;
 
     try {
         await apiCall(`/downloads/${id}`, 'DELETE');
-        showNotification('success', 'Download Removed', 'File has been kept on disk', 3000);
+        showNotification('success', 'Download Removed', '');
     } catch (error) {
         showNotification('error', 'Failed to Remove', error.message);
-    }
-}
-
-function updatePauseButton() {
-    const button = document.getElementById('togglePauseBtn');
-    if (button) {
-        if (globalPaused) {
-            button.textContent = 'Resume All';
-            button.classList.remove('secondary');
-            button.classList.add('primary');
-        } else {
-            button.textContent = 'Pause All';
-            button.classList.add('secondary');
-            button.classList.remove('primary');
-        }
-    }
-}
-
-async function togglePauseAll() {
-    const button = document.getElementById('togglePauseBtn');
-
-    try {
-        if (globalPaused) {
-            await apiCall('/downloads/resume-all', 'POST', null, button);
-            showNotification('success', 'All Downloads Resumed', '', 2000);
-        } else {
-            await apiCall('/downloads/pause-all', 'POST', null, button);
-            showNotification('success', 'All Downloads Paused', '', 2000);
-        }
-    } catch (error) {
-        showNotification('error', `Failed to ${globalPaused ? 'Resume' : 'Pause'} All`, error.message);
     }
 }
 
@@ -490,71 +817,6 @@ async function togglePauseAll() {
 // Settings Management
 // ============================================================================
 
-async function updateRateLimit(event) {
-    const valueField = document.getElementById('rateLimit');
-    const unitField = document.getElementById('rateLimitUnit');
-    const button = event ? event.target : null; // Get the button that triggered this
-
-    const value = valueField.value.trim();
-    const unit = parseInt(unitField.value);
-
-    // Clear previous validation errors
-    clearFieldError('rateLimit');
-
-    // Validate rate limit
-    const validationError = validateRateLimit(value);
-    if (validationError) {
-        showFieldError('rateLimit', validationError);
-        showNotification('error', 'Validation Error', validationError);
-        return;
-    }
-
-    const bytes = parseInt(value) * unit;
-
-    try {
-        await apiCall('/settings', 'PATCH', { global_rate_limit_bps: bytes.toString() }, button);
-
-        const displayValue = parseInt(value);
-        const unitName = unitField.options[unitField.selectedIndex].text;
-        const message = displayValue === 0 ?
-            'Rate limiting disabled' :
-            `Set to ${displayValue} ${unitName}`;
-
-        showNotification('success', 'Rate Limit Updated', message, 3000);
-    } catch (error) {
-        showNotification('error', 'Failed to Update Rate Limit', error.message);
-    }
-}
-
-async function updateMaxConcurrent(event) {
-    const valueField = document.getElementById('maxConcurrent');
-    const button = event ? event.target : null;
-
-    const value = valueField.value.trim();
-
-    // Clear previous validation errors
-    clearFieldError('maxConcurrent');
-
-    // Validate max concurrent
-    const validationError = validateMaxConcurrent(value);
-    if (validationError) {
-        showFieldError('maxConcurrent', validationError);
-        showNotification('error', 'Validation Error', validationError);
-        return;
-    }
-
-    const maxConcurrent = parseInt(value);
-
-    try {
-        await apiCall('/settings', 'PATCH', { max_concurrent_downloads: maxConcurrent.toString() }, button);
-
-        showNotification('success', 'Max Concurrent Updated', `Set to ${maxConcurrent} download${maxConcurrent !== 1 ? 's' : ''}`, 3000);
-    } catch (error) {
-        showNotification('error', 'Failed to Update Max Concurrent', error.message);
-    }
-}
-
-// Load initial settings
 async function loadSettings() {
     try {
         const settings = await apiCall('/settings');
@@ -565,80 +827,31 @@ async function loadSettings() {
     }
 }
 
-// Update settings UI when settings change
 function updateSettingsUI(settings) {
     const rateLimitBps = parseInt(settings.global_rate_limit_bps) || 0;
     const maxConcurrent = parseInt(settings.max_concurrent_downloads) || 3;
 
-    // Convert to MB/s for display
     const rateLimitMBps = Math.floor(rateLimitBps / 1048576);
     document.getElementById('rateLimit').value = rateLimitMBps;
-
-    // Update max concurrent downloads
     document.getElementById('maxConcurrent').value = maxConcurrent;
 }
 
-// ============================================================================
-// Input Validation on Blur
-// ============================================================================
+async function saveSettings() {
+    const rateLimitValue = document.getElementById('rateLimit').value.trim();
+    const rateLimitUnit = parseInt(document.getElementById('rateLimitUnit').value);
+    const maxConcurrent = document.getElementById('maxConcurrent').value.trim();
 
-// Add real-time validation feedback
-document.addEventListener('DOMContentLoaded', () => {
-    const urlField = document.getElementById('downloadUrl');
-    const rateLimitField = document.getElementById('rateLimit');
+    try {
+        const rateLimitBps = parseInt(rateLimitValue) * rateLimitUnit;
 
-    if (urlField) {
-        urlField.addEventListener('blur', () => {
-            const value = urlField.value.trim();
-            if (value) {
-                const error = validateURL(value);
-                showFieldError('downloadUrl', error);
-            }
+        await apiCall('/settings', 'PATCH', {
+            global_rate_limit_bps: rateLimitBps.toString(),
+            max_concurrent_downloads: maxConcurrent
         });
 
-        urlField.addEventListener('input', () => {
-            // Clear error when user starts typing
-            if (urlField.value.trim()) {
-                clearFieldError('downloadUrl');
-            }
-        });
+        showNotification('success', 'Settings Saved', 'Your settings have been updated');
+        closeSettingsModal();
+    } catch (error) {
+        showNotification('error', 'Failed to Save Settings', error.message);
     }
-
-    if (rateLimitField) {
-        rateLimitField.addEventListener('blur', () => {
-            const value = rateLimitField.value.trim();
-            if (value) {
-                const error = validateRateLimit(value);
-                showFieldError('rateLimit', error);
-            }
-        });
-
-        rateLimitField.addEventListener('input', () => {
-            clearFieldError('rateLimit');
-        });
-    }
-
-    const maxConcurrentField = document.getElementById('maxConcurrent');
-    if (maxConcurrentField) {
-        maxConcurrentField.addEventListener('blur', () => {
-            const value = maxConcurrentField.value.trim();
-            if (value) {
-                const error = validateMaxConcurrent(value);
-                showFieldError('maxConcurrent', error);
-            }
-        });
-
-        maxConcurrentField.addEventListener('input', () => {
-            clearFieldError('maxConcurrent');
-        });
-    }
-});
-
-// ============================================================================
-// Initialize
-// ============================================================================
-
-if (API_KEY) {
-    connect();
-    loadSettings();
 }
