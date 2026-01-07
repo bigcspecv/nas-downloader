@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 8
+## Current Step: 9
 
 ## In Progress
 
@@ -101,7 +101,7 @@ After completing your step, you MUST:
 - [x] 7. Add settings endpoints (`GET/PATCH /api/settings`)
 
 ### Phase 3: Downloads
-- [ ] 8. Create `server/download_manager.py` (DownloadManager + Download classes)
+- [x] 8. Create `server/download_manager.py` (DownloadManager + Download classes)
 - [ ] 9. Implement download logic (aiohttp, pause/resume with Range headers, rate limiting)
 - [ ] 10. Add download endpoints (CRUD + pause-all/resume-all)
 - [ ] 11. Add WebSocket endpoint (`/ws`) with auth and message handling
@@ -138,6 +138,7 @@ After completing your step, you MUST:
 | 5 | Created server/app.py with Flask skeleton: CORS support (configurable via ALLOWED_ORIGINS env), Bearer token authentication middleware using constant-time comparison, DB initialization from schema.sql, SQLite connection helper with Row factory, all route placeholders (folders, settings, downloads, WebSocket). Added flask-cors 4.0.0 to requirements.txt. |
 | 6 | Implemented folder endpoints: GET /api/folders lists subdirectories (accepts optional ?path= query param), POST /api/folders creates new folder (JSON body with 'path' field). Added validate_path() helper using os.path.commonpath to prevent path traversal attacks - validates resolved paths stay within DOWNLOAD_PATH. Returns normalized paths with forward slashes. |
 | 7 | Implemented settings endpoints: GET /api/settings returns all settings as JSON object, PATCH /api/settings updates one or more settings (partial updates). Validates setting keys against whitelist (global_rate_limit_bps, max_concurrent_downloads), validates values are numeric, enforces constraints (rate_limit >= 0, concurrent >= 1). Stores as TEXT, accepts string or int input. |
+| 8 | Created server/download_manager.py with Download and DownloadManager classes. Download handles individual downloads via aiohttp with pause/resume using HTTP Range headers, calculates speed/ETA, persists state every 5s. DownloadManager loads existing downloads on init, enforces max concurrent downloads, applies global rate limiting (bytes-per-second tracking), auto-processes queue, resets 'downloading' status to 'queued' on startup for crash recovery. |
 
 ---
 
@@ -157,6 +158,9 @@ After completing your step, you MUST:
 |----------|-----|------|
 | TEXT type for download IDs instead of INTEGER | Will use UUID strings for download IDs to avoid conflicts if DB is reset and for easier client-side tracking | 4 |
 | Key-value settings table | Allows flexible addition of new settings without schema changes; stores all values as TEXT for simplicity | 4 |
+| Reset 'downloading' to 'queued' on startup | Allows resuming downloads after server crash/restart - downloads in progress are safely resumed from last saved byte offset | 8 |
+| Batch DB progress updates every 5 seconds | Reduces DB write frequency during downloads while maintaining reasonable state persistence granularity | 8 |
+| Per-second byte tracking for rate limiting | Simple rate limiting implementation that sleeps when limit exceeded in current second, resets counter every second | 8 |
 
 ---
 
@@ -189,6 +193,29 @@ row = cursor.fetchone()
 
 # Always close connection
 conn.close()
+```
+
+**Download Manager Usage:**
+```python
+# Initialize manager (typically at app startup)
+from download_manager import DownloadManager
+manager = DownloadManager(db_path='/app/data/downloads.db', download_path='/downloads')
+
+# Add download (returns UUID)
+download_id = await manager.add_download(url='https://example.com/file.zip', folder='my_folder', filename='custom.zip')
+
+# Control downloads
+await manager.pause_download(download_id)
+await manager.resume_download(download_id)
+await manager.cancel_download(download_id)
+await manager.pause_all()
+await manager.resume_all()
+
+# Get download info
+downloads = await manager.get_downloads()  # Returns list of dicts with progress info
+
+# Set rate limit
+await manager.set_rate_limit(1048576)  # bytes per second (0 = unlimited)
 ```
 
 **WebSocket Broadcasting:**
