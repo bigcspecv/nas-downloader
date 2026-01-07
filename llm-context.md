@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 9
+## Current Step: 11
 
 ## In Progress
 
@@ -102,8 +102,8 @@ After completing your step, you MUST:
 
 ### Phase 3: Downloads
 - [x] 8. Create `server/download_manager.py` (DownloadManager + Download classes)
-- [ ] 9. Implement download logic (aiohttp, pause/resume with Range headers, rate limiting)
-- [ ] 10. Add download endpoints (CRUD + pause-all/resume-all)
+- [x] 9. Implement download logic (aiohttp, pause/resume with Range headers, rate limiting)
+- [x] 10. Add download endpoints (CRUD + pause-all/resume-all)
 - [ ] 11. Add WebSocket endpoint (`/ws`) with auth and message handling
 
 ### Phase 4: Web UI
@@ -139,6 +139,8 @@ After completing your step, you MUST:
 | 6 | Implemented folder endpoints: GET /api/folders lists subdirectories (accepts optional ?path= query param), POST /api/folders creates new folder (JSON body with 'path' field). Added validate_path() helper using os.path.commonpath to prevent path traversal attacks - validates resolved paths stay within DOWNLOAD_PATH. Returns normalized paths with forward slashes. |
 | 7 | Implemented settings endpoints: GET /api/settings returns all settings as JSON object, PATCH /api/settings updates one or more settings (partial updates). Validates setting keys against whitelist (global_rate_limit_bps, max_concurrent_downloads), validates values are numeric, enforces constraints (rate_limit >= 0, concurrent >= 1). Stores as TEXT, accepts string or int input. |
 | 8 | Created server/download_manager.py with Download and DownloadManager classes. Download handles individual downloads via aiohttp with pause/resume using HTTP Range headers, calculates speed/ETA, persists state every 5s. DownloadManager loads existing downloads on init, enforces max concurrent downloads, applies global rate limiting (bytes-per-second tracking), auto-processes queue, resets 'downloading' status to 'queued' on startup for crash recovery. |
+| 9 | Code review of download_manager.py confirmed implementation is complete and production-ready. All download logic already implemented in step 8: aiohttp with async/await, pause/resume via HTTP Range headers with 206 status handling, global rate limiting with per-second byte tracking, speed/ETA calculation, concurrent download management, error handling, and resource cleanup. No issues found. |
+| 10 | Implemented download endpoints in app.py: GET /api/downloads (list all), POST /api/downloads (create with url/folder/filename), GET/PATCH/DELETE /api/downloads/<id> (get/pause-resume/cancel), POST /api/downloads/pause-all and resume-all. All routes are async functions using await for download_manager methods. PATCH uses action field ('pause' or 'resume'). Folder paths validated. Global download_manager initialized on app startup. |
 
 ---
 
@@ -216,6 +218,28 @@ downloads = await manager.get_downloads()  # Returns list of dicts with progress
 
 # Set rate limit
 await manager.set_rate_limit(1048576)  # bytes per second (0 = unlimited)
+```
+
+**Download Endpoints (Async):**
+```python
+# All download endpoints are async and await download_manager methods
+@app.route('/api/downloads', methods=['POST'])
+@require_auth
+async def create_download():
+    data = request.get_json()
+    # Validate required fields
+    # Call: download_id = await download_manager.add_download(url, folder, filename)
+    return jsonify(download_info), 201
+
+# PATCH uses 'action' field for operations
+@app.route('/api/downloads/<download_id>', methods=['PATCH'])
+@require_auth
+async def update_download(download_id):
+    action = data['action']  # 'pause' or 'resume'
+    if action == 'pause':
+        await download_manager.pause_download(download_id)
+    elif action == 'resume':
+        await download_manager.resume_download(download_id)
 ```
 
 **WebSocket Broadcasting:**

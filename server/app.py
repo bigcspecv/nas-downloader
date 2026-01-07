@@ -1,9 +1,11 @@
 import os
 import sqlite3
+import asyncio
 from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from download_manager import DownloadManager
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +27,9 @@ if ALLOWED_ORIGINS == '*':
 else:
     origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(',')]
     CORS(app, origins=origins)
+
+# Global download manager instance (initialized after DB setup)
+download_manager = None
 
 
 # Database initialization
@@ -276,51 +281,131 @@ def update_settings():
 # Download endpoints (Step 10)
 @app.route('/api/downloads', methods=['GET'])
 @require_auth
-def get_downloads():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def get_downloads():
+    """Get list of all downloads with progress info"""
+    try:
+        downloads = await download_manager.get_downloads()
+        return jsonify({'downloads': downloads}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to get downloads: {str(e)}'}), 500
 
 
 @app.route('/api/downloads', methods=['POST'])
 @require_auth
-def create_download():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def create_download():
+    """Create a new download"""
+    data = request.get_json()
+
+    if not data or 'url' not in data:
+        return jsonify({'error': 'Missing url in request body'}), 400
+
+    url = data['url']
+    folder = data.get('folder', '')
+    filename = data.get('filename')
+
+    # Validate folder path if provided
+    if folder:
+        target_path = validate_path(folder)
+        if target_path is None:
+            return jsonify({'error': 'Invalid folder path'}), 400
+
+    try:
+        download_id = await download_manager.add_download(url, folder, filename)
+
+        # Get the created download info
+        downloads = await download_manager.get_downloads()
+        created_download = next((d for d in downloads if d['id'] == download_id), None)
+
+        return jsonify(created_download), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to create download: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/<download_id>', methods=['GET'])
 @require_auth
-def get_download(download_id):
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def get_download(download_id):
+    """Get specific download by ID"""
+    try:
+        downloads = await download_manager.get_downloads()
+        download = next((d for d in downloads if d['id'] == download_id), None)
+
+        if download is None:
+            return jsonify({'error': 'Download not found'}), 404
+
+        return jsonify(download), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to get download: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/<download_id>', methods=['PATCH'])
 @require_auth
-def update_download(download_id):
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def update_download(download_id):
+    """Update download (pause/resume)"""
+    data = request.get_json()
+
+    if not data or 'action' not in data:
+        return jsonify({'error': 'Missing action in request body'}), 400
+
+    action = data['action']
+
+    try:
+        if action == 'pause':
+            await download_manager.pause_download(download_id)
+        elif action == 'resume':
+            await download_manager.resume_download(download_id)
+        else:
+            return jsonify({'error': f'Invalid action: {action}. Use "pause" or "resume"'}), 400
+
+        # Return updated download info
+        downloads = await download_manager.get_downloads()
+        download = next((d for d in downloads if d['id'] == download_id), None)
+
+        if download is None:
+            return jsonify({'error': 'Download not found'}), 404
+
+        return jsonify(download), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to update download: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/<download_id>', methods=['DELETE'])
 @require_auth
-def delete_download(download_id):
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def delete_download(download_id):
+    """Cancel and delete a download"""
+    try:
+        # Check if download exists
+        downloads = await download_manager.get_downloads()
+        download = next((d for d in downloads if d['id'] == download_id), None)
+
+        if download is None:
+            return jsonify({'error': 'Download not found'}), 404
+
+        await download_manager.cancel_download(download_id)
+        return jsonify({'message': 'Download cancelled and deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete download: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/pause-all', methods=['POST'])
 @require_auth
-def pause_all_downloads():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def pause_all_downloads():
+    """Pause all active downloads"""
+    try:
+        await download_manager.pause_all()
+        return jsonify({'message': 'All downloads paused'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to pause downloads: {str(e)}'}), 500
 
 
 @app.route('/api/downloads/resume-all', methods=['POST'])
 @require_auth
-def resume_all_downloads():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+async def resume_all_downloads():
+    """Resume all paused downloads"""
+    try:
+        await download_manager.resume_all()
+        return jsonify({'message': 'All downloads resumed'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to resume downloads: {str(e)}'}), 500
 
 
 # WebSocket endpoint (Step 11)
@@ -347,6 +432,10 @@ def internal_error(error):
 if __name__ == '__main__':
     # Initialize database on startup
     init_db()
+
+    # Initialize download manager
+    global download_manager
+    download_manager = DownloadManager(db_path=DB_PATH, download_path=DOWNLOAD_PATH)
 
     print(f"Starting Download Manager on port {PORT}")
     print(f"Download path: {DOWNLOAD_PATH}")
