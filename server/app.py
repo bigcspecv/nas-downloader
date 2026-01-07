@@ -305,6 +305,9 @@ def update_settings():
         if 'max_concurrent_downloads' in data:
             download_manager.max_concurrent_downloads = int(data['max_concurrent_downloads'])
 
+        # Broadcast settings change to all connected WebSocket clients
+        broadcast_settings(settings)
+
         return jsonify(settings), 200
 
     except Exception as e:
@@ -623,6 +626,30 @@ async def broadcast_downloads():
         except Exception as e:
             print(f"Broadcast error: {e}")
             # Continue broadcasting even if there's an error
+
+
+def broadcast_settings(settings):
+    """Broadcast settings changes to all connected WebSocket clients"""
+    if not websocket_clients:
+        # No clients connected, skip
+        return
+
+    # Prepare message
+    message = json.dumps({
+        'type': 'settings_update',
+        'settings': settings
+    })
+
+    # Send to all connected clients
+    # Make a copy of the set to avoid modification during iteration
+    clients = websocket_clients.copy()
+    for client in clients:
+        try:
+            client.send(message)
+        except Exception as e:
+            # If send fails, remove the client (it's probably disconnected)
+            print(f"Failed to send settings update to WebSocket client: {e}")
+            websocket_clients.discard(client)
 
 
 # Serve static files

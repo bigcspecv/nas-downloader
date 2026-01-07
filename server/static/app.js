@@ -184,6 +184,9 @@ function handleWebSocketMessage(data) {
         globalPaused = data.global_paused || false;
         renderDownloads();
         updatePauseButton();
+    } else if (data.type === 'settings_update') {
+        // Settings were changed by another user or session
+        updateSettingsUI(data.settings);
     } else if (data.error) {
         console.error('WebSocket error:', data.error);
     }
@@ -516,15 +519,23 @@ async function updateRateLimit(event) {
 async function loadSettings() {
     try {
         const settings = await apiCall('/settings');
-        const rateLimitBps = parseInt(settings.global_rate_limit_bps) || 0;
-
-        // Convert to MB/s for display
-        const rateLimitMBps = Math.floor(rateLimitBps / 1048576);
-        document.getElementById('rateLimit').value = rateLimitMBps;
+        updateSettingsUI(settings);
     } catch (error) {
         console.error('Failed to load settings:', error);
         showNotification('error', 'Failed to Load Settings', error.message);
     }
+}
+
+// Update settings UI when settings change
+function updateSettingsUI(settings) {
+    const rateLimitBps = parseInt(settings.global_rate_limit_bps) || 0;
+
+    // Convert to MB/s for display
+    const rateLimitMBps = Math.floor(rateLimitBps / 1048576);
+    document.getElementById('rateLimit').value = rateLimitMBps;
+
+    // Note: max_concurrent_downloads is not currently displayed in the UI,
+    // but when it is added, it should be updated here as well
 }
 
 // ============================================================================
