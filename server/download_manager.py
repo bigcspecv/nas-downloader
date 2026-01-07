@@ -131,7 +131,13 @@ class Download:
                 self.update_db()
 
                 # Download in chunks
-                chunk_size = 8192
+                # Use smaller chunk size if rate limiting is enabled
+                if self.manager.global_rate_limit_bps > 0:
+                    # Use 1/4 of rate limit or 1KB minimum to allow smooth throttling
+                    chunk_size = max(1024, self.manager.global_rate_limit_bps // 4)
+                else:
+                    chunk_size = 8192
+
                 last_db_update = time.time()
 
                 with open(file_path, file_mode) as f:
@@ -146,7 +152,7 @@ class Download:
                         if self.cancelled:
                             break
 
-                        # Apply rate limiting
+                        # Apply rate limiting BEFORE writing
                         await self.manager.rate_limit(len(chunk))
 
                         # Write chunk
@@ -318,24 +324,31 @@ class DownloadManager:
         conn.close()
 
     async def rate_limit(self, bytes_downloaded: int):
-        """Apply rate limiting"""
+        """Apply rate limiting - ensures download speed doesn't exceed global_rate_limit_bps"""
         if self.global_rate_limit_bps == 0:
             return
 
         current_time = time.time()
+        elapsed = current_time - self.last_rate_limit_time
 
         # Reset counter every second
-        if current_time - self.last_rate_limit_time >= 1.0:
+        if elapsed >= 1.0:
             self.last_rate_limit_time = current_time
             self.bytes_this_second = 0
+            elapsed = 0
 
         self.bytes_this_second += bytes_downloaded
 
-        # If we've exceeded the rate limit, sleep
+        # Calculate how long we should have taken to download this many bytes
+        expected_time = self.bytes_this_second / self.global_rate_limit_bps
+
+        # If we're going too fast, sleep to match the rate limit
+        if expected_time > elapsed:
+            sleep_time = expected_time - elapsed
+            await asyncio.sleep(sleep_time)
+
+        # If we've completed a full second worth of data, reset
         if self.bytes_this_second >= self.global_rate_limit_bps:
-            sleep_time = 1.0 - (current_time - self.last_rate_limit_time)
-            if sleep_time > 0:
-                await asyncio.sleep(sleep_time)
             self.last_rate_limit_time = time.time()
             self.bytes_this_second = 0
 
@@ -370,6 +383,11 @@ class DownloadManager:
             download_id, url, folder, filename,
             self.db_path, self.download_path, self
         )
+
+        # Set status to match what was saved in DB (Download.__init__ defaults to 'queued')
+        download.status = initial_status
+        if initial_status == 'paused':
+            download.paused = True
 
         self.downloads[download_id] = download
 
@@ -423,13 +441,21 @@ class DownloadManager:
             await self.downloads[download_id].pause()
 
     async def resume_download(self, download_id: str):
-        """Resume specific download"""
+        """Resume specific download - starts immediately even if globally paused"""
         if download_id in self.downloads:
             download = self.downloads[download_id]
             await download.resume()  # This will raise ValueError if not paused
-            download.status = 'queued'
+
+            # Start download immediately, bypassing global pause
+            download.status = 'downloading'
             download.update_db()
 
+            # Start the download task directly
+            task = asyncio.create_task(download.start())
+            download.task = task
+            self.active_tasks.append(task)
+
+            # Ensure processing loop is running for queue management
             if not self.processing:
                 asyncio.create_task(self.process_queue())
 

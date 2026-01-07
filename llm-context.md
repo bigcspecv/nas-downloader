@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 12
+## Current Step: 18
 
 ## In Progress
 
@@ -107,21 +107,29 @@ After completing your step, you MUST:
 - [x] 11. Add WebSocket endpoint (`/ws`) with auth and message handling
 
 ### Phase 4: Web UI
-- [ ] 12. Create `server/static/index.html` (status, folders, downloads list, controls)
-- [ ] 13. Create `server/static/style.css`
-- [ ] 14. Create `server/static/app.js` (WebSocket client, DOM updates)
+- [x] 12. Create `server/static/index.html` (status, folders, downloads list, controls)
+- [x] 13. Create `server/static/style.css`
+- [x] 14. Create `server/static/app.js` (WebSocket client, DOM updates)
 
-### Phase 5: Chrome Extension
-- [ ] 15. Create `extension/manifest.json` (Manifest V3)
-- [ ] 16. Create `extension/options.html` + `options.js` (server URL, API key config)
-- [ ] 17. Create `extension/background.js` (WebSocket connection, reconnect logic)
-- [ ] 18. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
-- [ ] 19. Create placeholder icons (16, 48, 128px)
+### Phase 5: UI Refinement & Bug Fixes
+- [x] 15. Fix and test rate limiting (ensure accurate throttling at various speeds)
+- [x] 16. Test and fix pause/resume behavior (individual downloads and global pause)
+- [x] 17. Improve download status display (queued/downloading/paused/completed/failed states)
+- [ ] 18. Add error handling and user feedback (better alerts, status messages)
+- [ ] 19. Test edge cases (network errors, server restart, concurrent downloads, etc.)
+- [ ] 20. UI polish (loading states, animations, responsive design improvements)
 
-### Phase 6: Finalize
-- [ ] 20. Test full flow (docker-compose up, add download, pause/resume, rate limit)
-- [ ] 21. Test extension (connect, add download, verify sync)
-- [ ] 22. Create `README.md`
+### Phase 6: Chrome Extension
+- [ ] 21. Create `extension/manifest.json` (Manifest V3)
+- [ ] 22. Create `extension/options.html` + `options.js` (server URL, API key config)
+- [ ] 23. Create `extension/background.js` (WebSocket connection, reconnect logic)
+- [ ] 24. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
+- [ ] 25. Create placeholder icons (16, 48, 128px)
+
+### Phase 7: Finalize
+- [ ] 26. Test full flow (docker-compose up, add download, pause/resume, rate limit)
+- [ ] 27. Test extension (connect, add download, verify sync)
+- [ ] 28. Create `README.md`
 
 ---
 
@@ -142,6 +150,11 @@ After completing your step, you MUST:
 | 9 | Code review of download_manager.py confirmed implementation is complete and production-ready. All download logic already implemented in step 8: aiohttp with async/await, pause/resume via HTTP Range headers with 206 status handling, global rate limiting with per-second byte tracking, speed/ETA calculation, concurrent download management, error handling, and resource cleanup. No issues found. |
 | 10 | Implemented download endpoints in app.py: GET /api/downloads (list all), POST /api/downloads (create with url/folder/filename), GET/PATCH/DELETE /api/downloads/<id> (get/pause-resume/cancel), POST /api/downloads/pause-all and resume-all. Fixed Flask async compatibility by using background event loop in separate thread with asyncio.run_coroutine_threadsafe(). Fixed process_queue race condition where tasks were cleaned up too late. Added error_message field to download progress response. Tested and verified: HTTP downloads work perfectly, HTTPS downloads work with valid SSL certificates, invalid/expired certificates are properly rejected by aiohttp's default SSL handling, progress tracking accurate (bytes/percentage/speed/ETA), queue management functional. |
 | 11 | Implemented WebSocket endpoint at /ws using flask-sock. Authentication via api_key query parameter (constant-time comparison). Sends initial download status on connect, then broadcasts updates every 1 second to all connected clients. WebSocket handler manages client set (add on connect, remove on disconnect). Background broadcast_downloads() task runs in background event loop, sends JSON messages with type='status' and downloads array. Clients can send JSON messages (currently just echoed back for future extensibility). |
+| 12 | Created server/static/index.html - complete web UI with WebSocket connectivity, real-time download status display, add download form with URL/folder/filename fields, per-download controls (pause/resume/cancel), bulk operations (pause-all/resume-all), global rate limit settings with unit selector (B/s, KB/s, MB/s), responsive design with dark theme. API key authentication via URL hash, auto-reconnection with exponential backoff. Progress bars show percentage, speed (MB/s), ETA, status badges. |
+| 13 | Created server/static/style.css by extracting all CSS from index.html. Complete stylesheet with dark theme colors, responsive grid layout, progress bars with state-specific colors (downloading/paused/completed/failed), status badges, button styles (primary/secondary/danger), form controls, and mobile-responsive media queries for screens under 768px. Updated index.html to link to external stylesheet. |
+| 14 | Created server/static/app.js by extracting all JavaScript from index.html. Implements WebSocket client with auto-reconnection (exponential backoff up to 30s, max 10 attempts), real-time download rendering, API key authentication (URL hash or prompt), API wrapper functions for all download/settings operations, DOM manipulation for progress bars and status updates, ETA/speed formatting, HTML escaping for XSS protection. Updated index.html to link to external script. |
+| 14+ | Fixed multiple UI bugs: 1) Fixed static file paths to use /static/ prefix for Flask serving. 2) Fixed NaN display for queued downloads by handling null bytes. 3) Fixed pause/resume button logic - queued and paused downloads show correct buttons. 4) Fixed global_paused behavior - new downloads start paused when global pause enabled, resume_download bypasses global pause and starts immediately. 5) Converted Pause All/Resume All to single toggle button that tracks server state via WebSocket. 6) Fixed rate limiting - improved algorithm to calculate expected time and sleep accurately, dynamic chunk sizing based on rate limit. 7) Fixed settings update to apply immediately to download_manager in-memory state. |
+| 15-17 | Completed Phase 5 initial refinement: Verified rate limiting works accurately with various speeds (1KB/s to 100KB/s+), confirmed pause/resume behavior for individual downloads and global pause toggle, validated download status display shows correct buttons and data for all states (queued/downloading/paused/completed/failed). All core functionality tested and working. |
 
 ---
 
@@ -153,6 +166,10 @@ After completing your step, you MUST:
 - Step 10: Flask's built-in development server doesn't support async def route handlers. Use a background event loop in a daemon thread with asyncio.run_coroutine_threadsafe() to run async operations from sync Flask routes. Initialize with asyncio.new_event_loop() and run in threading.Thread(daemon=True).
 - Step 10: When tracking async tasks in a list, clean up completed tasks (filter out done() tasks) BEFORE checking if list is empty to avoid race conditions where newly created tasks haven't started yet.
 - Step 10: aiohttp's default SSL handling works correctly on all platforms including Windows. When a download fails with SSL errors, check if the server's SSL certificate is valid (not expired/invalid) before assuming it's a platform issue. The default aiohttp behavior properly validates certificates and rejects invalid ones.
+- Step 14: Flask serves static files from /static/ URL path by default, not from root. Always use /static/ prefix in HTML links (e.g., href="/static/style.css") unless you configure a custom static_url_path.
+- Step 14: When updating database settings, also update the in-memory state of the manager object. Database changes alone don't affect running code - you must sync both DB and runtime state for settings to take effect immediately.
+- Step 14: Rate limiting with large chunk sizes is ineffective. Adjust chunk size based on rate limit (e.g., rate_limit/4) to enable smooth throttling. Calculate expected download time vs actual time and sleep the difference for accurate rate limiting.
+- Step 14: When creating Download objects, the __init__ method sets default values (like status='queued'). Always override these with actual database values after construction to preserve saved state.
 
 ---
 

@@ -284,6 +284,13 @@ def update_settings():
         conn.close()
 
         settings = {row['key']: row['value'] for row in rows}
+
+        # Update download manager's in-memory settings
+        if 'global_rate_limit_bps' in data:
+            download_manager.global_rate_limit_bps = int(data['global_rate_limit_bps'])
+        if 'max_concurrent_downloads' in data:
+            download_manager.max_concurrent_downloads = int(data['max_concurrent_downloads'])
+
         return jsonify(settings), 200
 
     except Exception as e:
@@ -484,7 +491,8 @@ def websocket_handler(ws):
         downloads = run_async(download_manager.get_downloads())
         ws.send(json.dumps({
             'type': 'status',
-            'downloads': downloads
+            'downloads': downloads,
+            'global_paused': download_manager.global_paused
         }))
 
         # Keep connection alive and handle incoming messages
@@ -531,7 +539,8 @@ async def broadcast_downloads():
             # Prepare message
             message = json.dumps({
                 'type': 'status',
-                'downloads': downloads
+                'downloads': downloads,
+                'global_paused': download_manager.global_paused
             })
 
             # Send to all connected clients

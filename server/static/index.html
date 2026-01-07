@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Manager</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Download Manager</h1>
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Settings -->
+        <div class="panel">
+            <h2>Settings</h2>
+            <div class="settings-row">
+                <div class="control-group">
+                    <label for="rateLimit">Global Rate Limit</label>
+                    <div class="rate-limit-input">
+                        <input type="number" id="rateLimit" placeholder="0 = unlimited" min="0" value="0">
+                        <select id="rateLimitUnit">
+                            <option value="1">B/s</option>
+                            <option value="1024">KB/s</option>
+                            <option value="1048576" selected>MB/s</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="updateRateLimit()">Apply</button>
+            </div>
+        </div>
+
+        <!-- Add Download -->
+        <div class="panel">
+            <h2>Add Download</h2>
+            <form class="add-download-form" onsubmit="addDownload(event)">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="downloadUrl">URL *</label>
+                        <input type="url" id="downloadUrl" placeholder="https://example.com/file.zip" required>
+                    </div>
+                    <div class="control-group">
+                        <label for="downloadFolder">Folder</label>
+                        <input type="text" id="downloadFolder" placeholder="Leave empty for root">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="downloadFilename">Filename (optional)</label>
+                    <input type="text" id="downloadFilename" placeholder="Auto-detected from URL">
+                </div>
+                <button type="submit">Add Download</button>
+            </form>
+        </div>
+
+        <!-- Downloads -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin-bottom: 0;">Downloads</h2>
+                <button id="togglePauseBtn" class="secondary" onclick="togglePauseAll()">Pause All</button>
+            </div>
+            <div class="downloads-list" id="downloadsList">
+                <div class="empty-state">
+                    No downloads yet. Add one above to get started.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
