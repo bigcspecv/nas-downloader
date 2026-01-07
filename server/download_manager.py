@@ -220,6 +220,7 @@ class Download:
             'filename': self.filename,
             'folder': self.folder,
             'status': self.status,
+            'error_message': self.error_message,
             'progress': {
                 'downloaded_bytes': self.downloaded_bytes,
                 'total_bytes': self.total_bytes,
@@ -352,34 +353,43 @@ class DownloadManager:
 
         # Start processing if not already running
         if not self.processing:
+            print(f"Starting process_queue task for download {download_id}")
             asyncio.create_task(self.process_queue())
+        else:
+            print(f"Process queue already running for download {download_id}")
 
         return download_id
 
     async def process_queue(self):
         """Process download queue respecting concurrency limits"""
         self.processing = True
+        print("process_queue started")
 
         while True:
-            # Count active downloads
+            # Count active downloads (check both status and tasks)
             active_count = sum(1 for d in self.downloads.values()
                              if d.status == 'downloading')
 
             # Find queued downloads
             queued = [d for d in self.downloads.values() if d.status == 'queued']
 
+            # Clean up completed tasks FIRST
+            self.active_tasks = [t for t in self.active_tasks if not t.done()]
+
+            print(f"process_queue: active={active_count}, queued={len(queued)}, tasks={len(self.active_tasks)}, max={self.max_concurrent_downloads}")
+
             # Start new downloads if under limit
             if active_count < self.max_concurrent_downloads and queued:
                 for download in queued[:self.max_concurrent_downloads - active_count]:
+                    print(f"Starting download {download.id}")
                     task = asyncio.create_task(download.start())
                     download.task = task
                     self.active_tasks.append(task)
 
-            # Clean up completed tasks
-            self.active_tasks = [t for t in self.active_tasks if not t.done()]
-
-            # If no active or queued downloads, stop processing
+            # If no active tasks and no queued downloads, stop processing
+            # Use active_tasks instead of status check to avoid race condition
             if not self.active_tasks and not queued:
+                print("process_queue stopping - no work to do")
                 self.processing = False
                 break
 

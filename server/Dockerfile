@@ -2,6 +2,9 @@ FROM python:3.11-alpine
 
 WORKDIR /app
 
+# Install build dependencies for Python packages with C extensions
+RUN apk add --no-cache gcc musl-dev libffi-dev
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

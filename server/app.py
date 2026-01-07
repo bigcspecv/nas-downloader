@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import asyncio
+import threading
 from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -30,6 +31,10 @@ else:
 
 # Global download manager instance (initialized after DB setup)
 download_manager = None
+
+# Background event loop for async operations
+background_loop = None
+background_thread = None
 
 
 # Database initialization
@@ -278,13 +283,37 @@ def update_settings():
         return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
 
 
+# Background event loop setup
+def start_background_loop(loop):
+    """Start the background event loop in a separate thread"""
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+def init_background_loop():
+    """Initialize background event loop in a separate thread"""
+    global background_loop, background_thread
+    background_loop = asyncio.new_event_loop()
+    background_thread = threading.Thread(target=start_background_loop, args=(background_loop,), daemon=True)
+    background_thread.start()
+
+
+# Helper to run async functions in sync context
+def run_async(coro):
+    """Run an async coroutine in the background event loop"""
+    if background_loop is None:
+        raise RuntimeError("Background event loop not initialized")
+    future = asyncio.run_coroutine_threadsafe(coro, background_loop)
+    return future.result()
+
+
 # Download endpoints (Step 10)
 @app.route('/api/downloads', methods=['GET'])
 @require_auth
-async def get_downloads():
+def get_downloads():
     """Get list of all downloads with progress info"""
     try:
-        downloads = await download_manager.get_downloads()
+        downloads = run_async(download_manager.get_downloads())
         return jsonify({'downloads': downloads}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to get downloads: {str(e)}'}), 500
@@ -292,7 +321,7 @@ async def get_downloads():
 
 @app.route('/api/downloads', methods=['POST'])
 @require_auth
-async def create_download():
+def create_download():
     """Create a new download"""
     data = request.get_json()
 
@@ -310,10 +339,10 @@ async def create_download():
             return jsonify({'error': 'Invalid folder path'}), 400
 
     try:
-        download_id = await download_manager.add_download(url, folder, filename)
+        download_id = run_async(download_manager.add_download(url, folder, filename))
 
         # Get the created download info
-        downloads = await download_manager.get_downloads()
+        downloads = run_async(download_manager.get_downloads())
         created_download = next((d for d in downloads if d['id'] == download_id), None)
 
         return jsonify(created_download), 201
@@ -323,10 +352,10 @@ async def create_download():
 
 @app.route('/api/downloads/<download_id>', methods=['GET'])
 @require_auth
-async def get_download(download_id):
+def get_download(download_id):
     """Get specific download by ID"""
     try:
-        downloads = await download_manager.get_downloads()
+        downloads = run_async(download_manager.get_downloads())
         download = next((d for d in downloads if d['id'] == download_id), None)
 
         if download is None:
@@ -339,7 +368,7 @@ async def get_download(download_id):
 
 @app.route('/api/downloads/<download_id>', methods=['PATCH'])
 @require_auth
-async def update_download(download_id):
+def update_download(download_id):
     """Update download (pause/resume)"""
     data = request.get_json()
 
@@ -350,14 +379,14 @@ async def update_download(download_id):
 
     try:
         if action == 'pause':
-            await download_manager.pause_download(download_id)
+            run_async(download_manager.pause_download(download_id))
         elif action == 'resume':
-            await download_manager.resume_download(download_id)
+            run_async(download_manager.resume_download(download_id))
         else:
             return jsonify({'error': f'Invalid action: {action}. Use "pause" or "resume"'}), 400
 
         # Return updated download info
-        downloads = await download_manager.get_downloads()
+        downloads = run_async(download_manager.get_downloads())
         download = next((d for d in downloads if d['id'] == download_id), None)
 
         if download is None:
@@ -370,17 +399,17 @@ async def update_download(download_id):
 
 @app.route('/api/downloads/<download_id>', methods=['DELETE'])
 @require_auth
-async def delete_download(download_id):
+def delete_download(download_id):
     """Cancel and delete a download"""
     try:
         # Check if download exists
-        downloads = await download_manager.get_downloads()
+        downloads = run_async(download_manager.get_downloads())
         download = next((d for d in downloads if d['id'] == download_id), None)
 
         if download is None:
             return jsonify({'error': 'Download not found'}), 404
 
-        await download_manager.cancel_download(download_id)
+        run_async(download_manager.cancel_download(download_id))
         return jsonify({'message': 'Download cancelled and deleted'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to delete download: {str(e)}'}), 500
@@ -388,10 +417,10 @@ async def delete_download(download_id):
 
 @app.route('/api/downloads/pause-all', methods=['POST'])
 @require_auth
-async def pause_all_downloads():
+def pause_all_downloads():
     """Pause all active downloads"""
     try:
-        await download_manager.pause_all()
+        run_async(download_manager.pause_all())
         return jsonify({'message': 'All downloads paused'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to pause downloads: {str(e)}'}), 500
@@ -399,10 +428,10 @@ async def pause_all_downloads():
 
 @app.route('/api/downloads/resume-all', methods=['POST'])
 @require_auth
-async def resume_all_downloads():
+def resume_all_downloads():
     """Resume all paused downloads"""
     try:
-        await download_manager.resume_all()
+        run_async(download_manager.resume_all())
         return jsonify({'message': 'All downloads resumed'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to resume downloads: {str(e)}'}), 500
@@ -433,13 +462,18 @@ if __name__ == '__main__':
     # Initialize database on startup
     init_db()
 
-    # Initialize download manager
-    global download_manager
+    # Initialize background event loop
+    init_background_loop()
+
+    # Initialize download manager in the background loop
+    import time
+    time.sleep(0.1)  # Give background loop time to start
     download_manager = DownloadManager(db_path=DB_PATH, download_path=DOWNLOAD_PATH)
 
     print(f"Starting Download Manager on port {PORT}")
     print(f"Download path: {DOWNLOAD_PATH}")
     print(f"Database path: {DB_PATH}")
+    print("Background event loop initialized")
 
     # Run Flask app
     app.run(host='0.0.0.0', port=PORT, debug=False)

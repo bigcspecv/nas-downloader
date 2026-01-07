@@ -1,4 +1,4 @@
-CREATE TABLE downloads (
+CREATE TABLE IF NOT EXISTS downloads (
     id TEXT PRIMARY KEY,
     url TEXT NOT NULL,
     filename TEXT NOT NULL,
@@ -11,12 +11,12 @@ CREATE TABLE downloads (
     completed_at TIMESTAMP
 );
 
-CREATE TABLE settings (
+CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
 
--- Initialize default settings
-INSERT INTO settings (key, value) VALUES
+-- Initialize default settings (only if not already present)
+INSERT OR IGNORE INTO settings (key, value) VALUES
     ('global_rate_limit_bps', '0'),
     ('max_concurrent_downloads', '3');

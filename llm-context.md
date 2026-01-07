@@ -140,7 +140,7 @@ After completing your step, you MUST:
 | 7 | Implemented settings endpoints: GET /api/settings returns all settings as JSON object, PATCH /api/settings updates one or more settings (partial updates). Validates setting keys against whitelist (global_rate_limit_bps, max_concurrent_downloads), validates values are numeric, enforces constraints (rate_limit >= 0, concurrent >= 1). Stores as TEXT, accepts string or int input. |
 | 8 | Created server/download_manager.py with Download and DownloadManager classes. Download handles individual downloads via aiohttp with pause/resume using HTTP Range headers, calculates speed/ETA, persists state every 5s. DownloadManager loads existing downloads on init, enforces max concurrent downloads, applies global rate limiting (bytes-per-second tracking), auto-processes queue, resets 'downloading' status to 'queued' on startup for crash recovery. |
 | 9 | Code review of download_manager.py confirmed implementation is complete and production-ready. All download logic already implemented in step 8: aiohttp with async/await, pause/resume via HTTP Range headers with 206 status handling, global rate limiting with per-second byte tracking, speed/ETA calculation, concurrent download management, error handling, and resource cleanup. No issues found. |
-| 10 | Implemented download endpoints in app.py: GET /api/downloads (list all), POST /api/downloads (create with url/folder/filename), GET/PATCH/DELETE /api/downloads/<id> (get/pause-resume/cancel), POST /api/downloads/pause-all and resume-all. All routes are async functions using await for download_manager methods. PATCH uses action field ('pause' or 'resume'). Folder paths validated. Global download_manager initialized on app startup. |
+| 10 | Implemented download endpoints in app.py: GET /api/downloads (list all), POST /api/downloads (create with url/folder/filename), GET/PATCH/DELETE /api/downloads/<id> (get/pause-resume/cancel), POST /api/downloads/pause-all and resume-all. Fixed Flask async compatibility by using background event loop in separate thread with asyncio.run_coroutine_threadsafe(). Fixed process_queue race condition where tasks were cleaned up too late. Added error_message field to download progress response. Tested and verified: HTTP downloads work perfectly, HTTPS downloads work with valid SSL certificates, invalid/expired certificates are properly rejected by aiohttp's default SSL handling, progress tracking accurate (bytes/percentage/speed/ETA), queue management functional. |
 
 ---
 
@@ -149,6 +149,9 @@ After completing your step, you MUST:
 <!-- Things discovered that prevent future mistakes. Never delete these. -->
 
 - Step 6: Use os.path.commonpath() for path traversal protection instead of simple string prefix checking - it properly handles edge cases like different drives on Windows and normalized path separators
+- Step 10: Flask's built-in development server doesn't support async def route handlers. Use a background event loop in a daemon thread with asyncio.run_coroutine_threadsafe() to run async operations from sync Flask routes. Initialize with asyncio.new_event_loop() and run in threading.Thread(daemon=True).
+- Step 10: When tracking async tasks in a list, clean up completed tasks (filter out done() tasks) BEFORE checking if list is empty to avoid race conditions where newly created tasks haven't started yet.
+- Step 10: aiohttp's default SSL handling works correctly on all platforms including Windows. When a download fails with SSL errors, check if the server's SSL certificate is valid (not expired/invalid) before assuming it's a platform issue. The default aiohttp behavior properly validates certificates and rejects invalid ones.
 
 ---
 
@@ -220,26 +223,35 @@ downloads = await manager.get_downloads()  # Returns list of dicts with progress
 await manager.set_rate_limit(1048576)  # bytes per second (0 = unlimited)
 ```
 
-**Download Endpoints (Async):**
+**Download Endpoints (Sync with Background Event Loop):**
 ```python
-# All download endpoints are async and await download_manager methods
+# Background event loop for async operations (daemon thread)
+background_loop = asyncio.new_event_loop()
+background_thread = threading.Thread(target=start_background_loop, args=(background_loop,), daemon=True)
+
+# Helper to run async functions from sync Flask routes
+def run_async(coro):
+    future = asyncio.run_coroutine_threadsafe(coro, background_loop)
+    return future.result()
+
+# All download endpoints are sync but use run_async() to call download_manager
 @app.route('/api/downloads', methods=['POST'])
 @require_auth
-async def create_download():
+def create_download():
     data = request.get_json()
     # Validate required fields
-    # Call: download_id = await download_manager.add_download(url, folder, filename)
+    download_id = run_async(download_manager.add_download(url, folder, filename))
     return jsonify(download_info), 201
 
 # PATCH uses 'action' field for operations
 @app.route('/api/downloads/<download_id>', methods=['PATCH'])
 @require_auth
-async def update_download(download_id):
+def update_download(download_id):
     action = data['action']  # 'pause' or 'resume'
     if action == 'pause':
-        await download_manager.pause_download(download_id)
+        run_async(download_manager.pause_download(download_id))
     elif action == 'resume':
-        await download_manager.resume_download(download_id)
+        run_async(download_manager.resume_download(download_id))
 ```
 
 **WebSocket Broadcasting:**

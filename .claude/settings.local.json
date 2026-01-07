@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(pip install:*)",
+      "Bash(docker-compose build:*)"
+    ]
+  }
+}
