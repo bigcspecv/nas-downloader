@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 6
+## Current Step: 7
 
 ## In Progress
 
@@ -97,7 +97,7 @@ After completing your step, you MUST:
 ### Phase 2: Server Core
 - [x] 4. Create `server/db/schema.sql` (downloads + settings tables)
 - [x] 5. Create `server/app.py` skeleton (Flask, CORS, auth middleware, DB init)
-- [ ] 6. Add folder endpoints (`GET/POST /api/folders`) with path traversal protection
+- [x] 6. Add folder endpoints (`GET/POST /api/folders`) with path traversal protection
 - [ ] 7. Add settings endpoints (`GET/PATCH /api/settings`)
 
 ### Phase 3: Downloads
@@ -136,6 +136,7 @@ After completing your step, you MUST:
 | 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 5000. |
 | 4 | Created server/db/schema.sql: downloads table with TEXT id (for UUIDs), status enum (queued/downloading/paused/completed/failed), progress tracking (downloaded_bytes, total_bytes), timestamps. Settings table as key-value pairs with default entries for global_rate_limit_bps (0) and max_concurrent_downloads (3). |
 | 5 | Created server/app.py with Flask skeleton: CORS support (configurable via ALLOWED_ORIGINS env), Bearer token authentication middleware using constant-time comparison, DB initialization from schema.sql, SQLite connection helper with Row factory, all route placeholders (folders, settings, downloads, WebSocket). Added flask-cors 4.0.0 to requirements.txt. |
+| 6 | Implemented folder endpoints: GET /api/folders lists subdirectories (accepts optional ?path= query param), POST /api/folders creates new folder (JSON body with 'path' field). Added validate_path() helper using os.path.commonpath to prevent path traversal attacks - validates resolved paths stay within DOWNLOAD_PATH. Returns normalized paths with forward slashes. |
 
 ---
 
@@ -143,7 +144,7 @@ After completing your step, you MUST:
 
 <!-- Things discovered that prevent future mistakes. Never delete these. -->
 
-- (none yet)
+- Step 6: Use os.path.commonpath() for path traversal protection instead of simple string prefix checking - it properly handles edge cases like different drives on Windows and normalized path separators
 
 ---
 
@@ -203,6 +204,17 @@ return jsonify({'error': 'Error message here'}), status_code
 # 401: {'error': 'Invalid API key'}
 # 404: {'error': 'Not found'}
 # 500: {'error': 'Internal server error'}
+```
+
+**Path Traversal Protection:**
+```python
+# Use validate_path() helper for all user-provided paths
+target_path = validate_path(user_provided_path)
+if target_path is None:
+    return jsonify({'error': 'Invalid path'}), 400
+
+# validate_path() uses os.path.commonpath to ensure resolved path
+# stays within DOWNLOAD_PATH, preventing ../ attacks
 ```
 
 ---

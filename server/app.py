@@ -87,21 +87,104 @@ def compare_digest(a, b):
     return hmac.compare_digest(a.encode(), b.encode())
 
 
+# Helper function for path traversal protection
+def validate_path(relative_path):
+    """
+    Validate that a relative path doesn't escape DOWNLOAD_PATH.
+    Returns absolute path if valid, None if invalid.
+    """
+    # Normalize and resolve the full path
+    full_path = os.path.normpath(os.path.join(DOWNLOAD_PATH, relative_path))
+    full_path = os.path.abspath(full_path)
+
+    # Ensure the resolved path is within DOWNLOAD_PATH
+    base_path = os.path.abspath(DOWNLOAD_PATH)
+
+    # Check that full_path starts with base_path
+    # Use os.path.commonpath to handle edge cases properly
+    try:
+        common = os.path.commonpath([base_path, full_path])
+        if common != base_path:
+            return None
+    except ValueError:
+        # Paths are on different drives (Windows)
+        return None
+
+    return full_path
+
+
 # API Routes (to be implemented in later steps)
 
 # Folder endpoints (Step 6)
 @app.route('/api/folders', methods=['GET'])
 @require_auth
 def get_folders():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+    """List folders in the download directory"""
+    # Get optional subfolder parameter
+    subfolder = request.args.get('path', '')
+
+    # Validate path to prevent traversal
+    target_path = validate_path(subfolder)
+    if target_path is None:
+        return jsonify({'error': 'Invalid path'}), 400
+
+    # Check if path exists
+    if not os.path.exists(target_path):
+        return jsonify({'error': 'Path does not exist'}), 404
+
+    if not os.path.isdir(target_path):
+        return jsonify({'error': 'Path is not a directory'}), 400
+
+    # List subdirectories
+    try:
+        folders = []
+        for entry in os.listdir(target_path):
+            entry_path = os.path.join(target_path, entry)
+            if os.path.isdir(entry_path):
+                # Return relative path from DOWNLOAD_PATH
+                rel_path = os.path.relpath(entry_path, DOWNLOAD_PATH)
+                folders.append({
+                    'name': entry,
+                    'path': rel_path.replace('\\', '/')  # Normalize to forward slashes
+                })
+
+        return jsonify({'folders': folders}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to list folders: {str(e)}'}), 500
 
 
 @app.route('/api/folders', methods=['POST'])
 @require_auth
 def create_folder():
-    # To be implemented
-    return jsonify({'error': 'Not implemented'}), 501
+    """Create a new folder in the download directory"""
+    data = request.get_json()
+
+    if not data or 'path' not in data:
+        return jsonify({'error': 'Missing path in request body'}), 400
+
+    folder_path = data['path']
+
+    # Validate path to prevent traversal
+    target_path = validate_path(folder_path)
+    if target_path is None:
+        return jsonify({'error': 'Invalid path'}), 400
+
+    # Check if folder already exists
+    if os.path.exists(target_path):
+        return jsonify({'error': 'Folder already exists'}), 409
+
+    # Create the folder
+    try:
+        os.makedirs(target_path, exist_ok=False)
+
+        # Return the created folder info
+        rel_path = os.path.relpath(target_path, DOWNLOAD_PATH)
+        return jsonify({
+            'name': os.path.basename(target_path),
+            'path': rel_path.replace('\\', '/')
+        }), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to create folder: {str(e)}'}), 500
 
 
 # Settings endpoints (Step 7)
