@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 5
+## Current Step: 6
 
 ## In Progress
 
@@ -96,7 +96,7 @@ After completing your step, you MUST:
 
 ### Phase 2: Server Core
 - [x] 4. Create `server/db/schema.sql` (downloads + settings tables)
-- [ ] 5. Create `server/app.py` skeleton (Flask, CORS, auth middleware, DB init)
+- [x] 5. Create `server/app.py` skeleton (Flask, CORS, auth middleware, DB init)
 - [ ] 6. Add folder endpoints (`GET/POST /api/folders`) with path traversal protection
 - [ ] 7. Add settings endpoints (`GET/PATCH /api/settings`)
 
@@ -135,6 +135,7 @@ After completing your step, you MUST:
 | 2 | Created .env.example with all environment variables (API_KEY, PORT, ALLOWED_ORIGINS, etc.). Updated existing .gitignore to add project-specific ignores (downloads/, data/, *.db). Created docker-compose.yml with service definition, volume mounts, and environment variable passing. |
 | 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 5000. |
 | 4 | Created server/db/schema.sql: downloads table with TEXT id (for UUIDs), status enum (queued/downloading/paused/completed/failed), progress tracking (downloaded_bytes, total_bytes), timestamps. Settings table as key-value pairs with default entries for global_rate_limit_bps (0) and max_concurrent_downloads (3). |
+| 5 | Created server/app.py with Flask skeleton: CORS support (configurable via ALLOWED_ORIGINS env), Bearer token authentication middleware using constant-time comparison, DB initialization from schema.sql, SQLite connection helper with Row factory, all route placeholders (folders, settings, downloads, WebSocket). Added flask-cors 4.0.0 to requirements.txt. |
 
 ---
 
@@ -162,13 +163,30 @@ After completing your step, you MUST:
 <!-- Established patterns. Update as they evolve, but don't delete history. -->
 
 **Authentication:**
-```
-(defined in Step 5)
+```python
+# Decorator on all protected routes
+@require_auth
+def my_endpoint():
+    # Route implementation
+    pass
+
+# Uses Bearer token: Authorization: Bearer {API_KEY}
+# Constant-time comparison to prevent timing attacks
 ```
 
 **Database Access:**
-```
-(defined in Step 5)
+```python
+# Get connection with Row factory for dict-like access
+conn = get_db()
+cursor = conn.cursor()
+
+# Query example
+cursor.execute("SELECT * FROM downloads WHERE id = ?", (download_id,))
+row = cursor.fetchone()
+# Access by column name: row['id'], row['status'], etc.
+
+# Always close connection
+conn.close()
 ```
 
 **WebSocket Broadcasting:**
@@ -177,8 +195,14 @@ After completing your step, you MUST:
 ```
 
 **Error Response Format:**
-```
-(defined in Step 5)
+```python
+# All errors return JSON with 'error' key
+return jsonify({'error': 'Error message here'}), status_code
+
+# Examples:
+# 401: {'error': 'Invalid API key'}
+# 404: {'error': 'Not found'}
+# 500: {'error': 'Internal server error'}
 ```
 
 ---
