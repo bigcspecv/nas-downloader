@@ -98,7 +98,7 @@ function renderDownloads() {
 
         const speedMBps = (speedBps / 1048576).toFixed(2);
         const downloadedMB = (downloadedBytes / 1048576).toFixed(2);
-        const totalMB = (totalBytes / 1048576).toFixed(2);
+        const totalMB = totalBytes > 0 ? (totalBytes / 1048576).toFixed(2) : '?';
         const eta = formatETA(etaSeconds);
 
         let progressClass = '';
@@ -134,13 +134,15 @@ function renderDownloads() {
                     <div class="download-stats">
                         <span>
                             <span class="status-badge ${download.status}">${download.status}</span>
-                            ${downloadedMB} / ${totalMB} MB (${percentage}%)
+                            ${totalBytes > 0 ?
+                                `${downloadedMB} / ${totalMB} MB (${percentage}%)` :
+                                `${downloadedMB} MB (size unknown)`}
                         </span>
                         <span>
                             ${download.status === 'downloading' ?
-                                `${speedMBps} MB/s • ETA: ${eta}` :
+                                `⚡ ${speedMBps} MB/s • ETA: ${eta}` :
                                 (download.status === 'paused' && speedBps > 0) ?
-                                `Last speed: ${speedMBps} MB/s` :
+                                `⚡ Last speed: ${speedMBps} MB/s` :
                                 ''}
                         </span>
                     </div>
