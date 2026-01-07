@@ -75,7 +75,7 @@ After completing your step, you MUST:
 
 ---
 
-## Current Step: 4
+## Current Step: 5
 
 ## In Progress
 
@@ -95,7 +95,7 @@ After completing your step, you MUST:
 - [x] 3. Create `server/requirements.txt`, `server/Dockerfile`
 
 ### Phase 2: Server Core
-- [ ] 4. Create `server/db/schema.sql` (downloads + settings tables)
+- [x] 4. Create `server/db/schema.sql` (downloads + settings tables)
 - [ ] 5. Create `server/app.py` skeleton (Flask, CORS, auth middleware, DB init)
 - [ ] 6. Add folder endpoints (`GET/POST /api/folders`) with path traversal protection
 - [ ] 7. Add settings endpoints (`GET/PATCH /api/settings`)
@@ -134,6 +134,7 @@ After completing your step, you MUST:
 | 1 | Created project directory structure: server/ with static/ and db/ subdirectories, extension/ with icons/ subdirectory. All directories created using mkdir -p on Windows. |
 | 2 | Created .env.example with all environment variables (API_KEY, PORT, ALLOWED_ORIGINS, etc.). Updated existing .gitignore to add project-specific ignores (downloads/, data/, *.db). Created docker-compose.yml with service definition, volume mounts, and environment variable passing. |
 | 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 5000. |
+| 4 | Created server/db/schema.sql: downloads table with TEXT id (for UUIDs), status enum (queued/downloading/paused/completed/failed), progress tracking (downloaded_bytes, total_bytes), timestamps. Settings table as key-value pairs with default entries for global_rate_limit_bps (0) and max_concurrent_downloads (3). |
 
 ---
 
@@ -151,7 +152,8 @@ After completing your step, you MUST:
 
 | Decision | Why | Step |
 |----------|-----|------|
-| - | - | - |
+| TEXT type for download IDs instead of INTEGER | Will use UUID strings for download IDs to avoid conflicts if DB is reset and for easier client-side tracking | 4 |
+| Key-value settings table | Allows flexible addition of new settings without schema changes; stores all values as TEXT for simplicity | 4 |
 
 ---
 
