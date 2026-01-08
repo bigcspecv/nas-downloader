@@ -421,6 +421,9 @@ body {
     font-size: 11px;
     color: var(--accent-primary);
     margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .download-size {

@@ -42,6 +42,10 @@ class Download:
         folder_path = os.path.join(self.download_path, self.folder)
         return os.path.join(folder_path, self.filename)
 
+    def get_temp_file_path(self) -> str:
+        """Get full path to temporary download file (with .ndownload extension)"""
+        return self.get_file_path() + '.ndownload'
+
     def update_db(self):
         """Save current state to database"""
         conn = sqlite3.connect(self.db_path)
@@ -95,11 +99,12 @@ class Download:
             folder_path = os.path.join(self.download_path, self.folder)
             os.makedirs(folder_path, exist_ok=True)
 
-            file_path = self.get_file_path()
+            # Use temp file path during download
+            temp_file_path = self.get_temp_file_path()
 
-            # Check if partial download exists
-            if os.path.exists(file_path):
-                self.downloaded_bytes = os.path.getsize(file_path)
+            # Check if partial download exists (in temp file)
+            if os.path.exists(temp_file_path):
+                self.downloaded_bytes = os.path.getsize(temp_file_path)
 
             # Prepare headers for resume
             headers = {}
@@ -140,7 +145,7 @@ class Download:
 
                 last_db_update = time.time()
 
-                with open(file_path, file_mode) as f:
+                with open(temp_file_path, file_mode) as f:
                     async for chunk in response.content.iter_chunked(chunk_size):
                         if self.cancelled:
                             break
@@ -173,6 +178,15 @@ class Download:
                     self.status = 'completed'
                     self.speed_bps = 0
                     self.eta_seconds = 0
+
+                    # Rename temp file to final filename
+                    final_file_path = self.get_file_path()
+                    if os.path.exists(temp_file_path):
+                        # Remove final file if it exists (shouldn't normally happen)
+                        if os.path.exists(final_file_path):
+                            os.remove(final_file_path)
+                        os.rename(temp_file_path, final_file_path)
+
                     self.update_db()
 
         except asyncio.CancelledError:
@@ -231,12 +245,22 @@ class Download:
 
         # Delete file if requested or if incomplete
         if should_delete:
-            file_path = self.get_file_path()
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except:
-                    pass
+            # For incomplete downloads, delete the temp file
+            if original_status != 'completed':
+                temp_file_path = self.get_temp_file_path()
+                if os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                    except:
+                        pass
+            else:
+                # For completed downloads, delete the final file
+                file_path = self.get_file_path()
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
 
     def get_progress(self) -> Dict:
         """Get current progress info"""

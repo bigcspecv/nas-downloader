@@ -547,7 +547,7 @@ function renderDownloads() {
                         <div class="download-url" title="${escapeHtml(download.url)}">
                             ${escapeHtml(download.url)}
                         </div>
-                        ${download.folder ? `<div class="download-folder">📁 ${escapeHtml(download.folder)}</div>` : ''}
+                        ${download.folder ? `<div class="download-folder"><span class="icon-placeholder" data-icon="folder" data-class="icon icon-sm"></span> ${escapeHtml(download.folder)}</div>` : ''}
                     </div>
                 </div>
                 <div class="td">

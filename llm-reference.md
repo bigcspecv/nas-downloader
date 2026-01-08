@@ -35,6 +35,7 @@ Historical steps that have been archived from the main context document.
 | 21 | Added WebSocket broadcasting for settings changes. Server broadcasts settings_update messages when settings are modified via PATCH /api/settings. Frontend handles settings_update messages and updates UI (rate limit field) automatically for real-time multi-user sync. |
 | 22 | Added max concurrent downloads UI control with validation, update function, and real-time sync via WebSocket. All settings (rate limit and max concurrent) now update automatically across all connected users when changed. |
 | 23 | Fixed resume_all to respect max_concurrent_downloads limit. Changed resume_all to set paused downloads to queued status instead of starting them immediately, allowing process_queue to enforce concurrency limits properly. |
+| 24 | Overhauled WebUI with unique dark theme design: left sidebar navigation with categories (All/Active/Completed/Paused/Failed), teal/cyan gradient accent colors, table-based download list, toolbar with New Download/Pause All/Delete buttons, always-visible search, modals for add download and settings, bottom status bar showing global speed and active downloads. Replaced generic Free Download Manager clone with unique nas-downloader branding. |
 <!-- ARCHIVE-END -->
 
 ---

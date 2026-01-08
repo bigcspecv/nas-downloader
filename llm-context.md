@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 30 <!-- CURRENT-STEP -->
+## Current Step: 33 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -182,11 +182,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 29. Integrate folder browser into "Add Download" form
 
 ### Phase 8: UX - Download File Management
-- [ ] 30. Implement in-progress file extension (e.g., .download or .crdownload)
-- [ ] 31. Rename file on completion (remove in-progress extension)
-- [ ] 32. Handle resume/pause with in-progress filenames
-- [ ] 33. Update "Remove" button to offer file deletion option for completed downloads
-- [ ] 34. Add confirmation dialog for file deletion (keep vs delete actual file)
+- [x] 30. Implement in-progress file extension (e.g., .download or .crdownload)
+- [x] 31. Rename file on completion (remove in-progress extension)
+- [x] 32. Handle resume/pause with in-progress filenames
 
 ### Phase 9: Testing & Edge Cases
 - [ ] 35. Test network errors (timeout, connection drop, DNS failure)
@@ -222,9 +220,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 24 | Overhauled WebUI with unique dark theme design: left sidebar navigation with categories (All/Active/Completed/Paused/Failed), teal/cyan gradient accent colors, table-based download list, toolbar with New Download/Pause All/Delete buttons, always-visible search, modals for add download and settings, bottom status bar showing global speed and active downloads. Replaced generic Free Download Manager clone with unique nas-downloader branding. |
 | 24 | Completed WebUI overhaul with custom modal system and authentication error handling. Created generic dialog modal (confirm/prompt/alert) with keyboard support and danger mode, replacing all standard JS dialogs. Fixed WebSocket auth failures to send auth_error message type, stop reconnect loop, and prompt for new API key using custom modal. |
 | 25-29 | Implemented folder browser UI component with Save As dialog appearance: breadcrumb navigation with compact spacing and auto-scroll to current folder, folder list with click-to-navigate and parent folder (..) support, New Folder button with validation, animated scroll indicator (.../) that fades in when breadcrumb is scrolled. Used llm-tools/add-icon.bat to properly add heroicons (home, folder, folder-plus, arrow-up). |
+| 30-32 | Implemented in-progress file extension system: downloads now write to .ndownload temp files during transfer, automatically rename to final filename on completion, and properly handle pause/resume with temp files. Updated cancel() to delete correct file based on completion status. Fixed download-row folder icon: replaced emoji with themed folder icon and aligned with flexbox. |
 <!-- CONTEXT-END -->
 
 ---
@@ -266,6 +264,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | Toast notification system instead of browser alerts | Provides better UX with non-blocking notifications, auto-dismiss after timeout, visual feedback with icons/colors for different message types (success/error/warning/info), and allows multiple notifications to stack | 20 |
 | Use auth_error message type instead of WebSocket close codes for authentication failures | simple_websocket library has issues with custom close codes and sending messages before close. Message-based approach is more reliable and allows sending detailed error information before closing connection | 24 |
 | Folder browser with breadcrumb navigation and scroll indicator | Provides Save As dialog-like UX with compact breadcrumb showing full path, auto-scrolls to show current location, animated scroll indicator (.../) reveals hidden path segments, uses existing /api/folders endpoints for navigation and creation | 25-29 |
+| Use .ndownload extension for in-progress downloads | Clearly identifies temp files as belonging to nas-downloader, prevents conflicts with browser .download or .crdownload files, and provides visual indication that file is incomplete | 30-32 |
 <!-- DECISIONS-END -->
 
 ---
