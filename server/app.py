@@ -13,12 +13,18 @@ from download_manager import DownloadManager
 # Load environment variables
 load_dotenv()
 
+# Get the project root directory (parent of server directory)
+SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SERVER_DIR)
+
 # Configuration
 API_KEY = os.getenv('API_KEY', 'your-secret-key-here')
 PORT = int(os.getenv('PORT', 5000))
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*')
-DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
-DATA_PATH = os.getenv('DATA_PATH', '/app/data')
+
+# Resolve paths to absolute paths
+DOWNLOAD_PATH = os.path.abspath(os.getenv('DOWNLOAD_PATH', '/downloads'))
+DATA_PATH = os.path.abspath(os.getenv('DATA_PATH', '/app/data'))
 DB_PATH = os.path.join(DATA_PATH, 'downloads.db')
 
 # Initialize Flask app
@@ -699,11 +705,16 @@ if __name__ == '__main__':
     # Start WebSocket broadcast task
     broadcast_task = asyncio.run_coroutine_threadsafe(broadcast_downloads(), background_loop)
 
+    print("=" * 80)
     print(f"Starting Download Manager on port {PORT}")
+    print(f"Server directory: {SERVER_DIR}")
+    print(f"Project root: {PROJECT_ROOT}")
     print(f"Download path: {DOWNLOAD_PATH}")
+    print(f"Data path: {DATA_PATH}")
     print(f"Database path: {DB_PATH}")
     print("Background event loop initialized")
     print("WebSocket broadcast task started")
+    print("=" * 80)
 
     # Run Flask app
     app.run(host='0.0.0.0', port=PORT, debug=False)

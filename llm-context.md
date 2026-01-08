@@ -185,10 +185,10 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 30. Implement in-progress file extension (e.g., .download or .crdownload)
 - [x] 31. Rename file on completion (remove in-progress extension)
 - [x] 32. Handle resume/pause with in-progress filenames
-- [ ] 33. Implement filename parsing in the webui when entering a url (strip urlenc values, etc.)
+- [x] 33. Implement filename parsing in the webui when entering a url (strip urlenc values, etc.)
 - [ ] 34. Fix bugs:
-   - [ ] 34.01 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
-   - [ ] 34.02 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
+   - [x] 34.01 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
+   - [ ] 34.02 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
    - [ ] 34.03 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [ ] 34.04 There are downloads in the DB that are not showing up in the UI
 
@@ -226,9 +226,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 25-29 | Implemented folder browser UI component with Save As dialog appearance: breadcrumb navigation with compact spacing and auto-scroll to current folder, folder list with click-to-navigate and parent folder (..) support, New Folder button with validation, animated scroll indicator (.../) that fades in when breadcrumb is scrolled. Used llm-tools/add-icon.bat to properly add heroicons (home, folder, folder-plus, arrow-up). |
 | 30-32 | Implemented in-progress file extension system: downloads now write to .ndownload temp files during transfer, automatically rename to final filename on completion, and properly handle pause/resume with temp files. Updated cancel() to delete correct file based on completion status. Fixed download-row folder icon: replaced emoji with themed folder icon and aligned with flexbox. |
 | 33 | Implemented URL filename parsing in WebUI: auto-extracts filename from URL input, decodes URL-encoded characters (%20 -> space), strips query parameters and fragments. Added onUrlChange() to auto-fill filename field and onFilenameChange() to track manual edits (prevents overwriting user input). Resets userModified flag on modal close. |
+| 34.01 | Fixed duplicate temp file issue: made DOWNLOAD_PATH and DATA_PATH always resolve to absolute paths using os.path.abspath(). This prevents path resolution differences based on current working directory. Deleted obsolete server/downloads directory that was created from previous relative path issues. |
 <!-- CONTEXT-END -->
 
 ---
@@ -248,6 +248,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 14: When creating Download objects, the __init__ method sets default values (like status='queued'). Always override these with actual database values after construction to preserve saved state.
 - Step 23: resume_all() must not call resume_download() for each download, as resume_download() bypasses the queue and concurrency limits. Instead, change paused downloads to queued status and let process_queue() enforce limits.
 - Step 24: simple_websocket library: Using ws.close(reason=1008, message='...') causes 'Invalid frame header' errors. Sending a message immediately before close also breaks the close handshake. Solution: send auth_error message type, add small delay (10ms), then call ws.close() without parameters. Client detects message type instead of close code.
+- Step 34.01: Always use os.path.abspath() on environment variable paths to ensure consistent resolution regardless of current working directory. Without this, /downloads can resolve to different locations (c:\downloads vs server\downloads) depending on where the script is run from.
 <!-- LESSONS-END -->
 
 ---
