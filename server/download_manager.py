@@ -43,8 +43,9 @@ class Download:
         return os.path.join(folder_path, self.filename)
 
     def get_temp_file_path(self) -> str:
-        """Get full path to temporary download file (with .ndownload extension)"""
-        return self.get_file_path() + '.ndownload'
+        """Get full path to temporary download file (uses ID for uniqueness and crash recovery)"""
+        folder_path = os.path.join(self.download_path, self.folder)
+        return os.path.join(folder_path, f"{self.id}.ndownload")
 
     def update_db(self):
         """Save current state to database"""
@@ -431,10 +432,9 @@ class DownloadManager:
 
         while True:
             final_path = os.path.join(folder_path, test_filename)
-            temp_path = final_path + '.ndownload'
 
-            # Check if either final file or temp file exists
-            if not os.path.exists(final_path) and not os.path.exists(temp_path):
+            # Only check final file (temp files now use unique IDs, so no conflicts)
+            if not os.path.exists(final_path):
                 return test_filename
 
             # Generate next candidate filename
@@ -465,14 +465,12 @@ class DownloadManager:
 
         # Handle overwrite or unique filename
         if overwrite:
-            # Delete existing files if overwrite is requested
+            # Delete existing final file if overwrite is requested
+            # (temp files are ID-based and belong to active downloads, so we don't touch them)
             final_path = os.path.join(folder_path, filename)
-            temp_path = final_path + '.ndownload'
 
             if os.path.exists(final_path):
                 os.remove(final_path)
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
         else:
             # Get unique filename to avoid overwriting existing files
             filename = self._get_unique_filename(folder, filename)
