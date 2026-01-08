@@ -233,8 +233,17 @@ class Download:
         original_status = self.status
         self.status = 'cancelled'
 
+        # Cancel the task and wait for it to finish
         if self.task:
             self.task.cancel()
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                # Expected when task is cancelled
+                pass
+            except Exception:
+                # Ignore other exceptions during cleanup
+                pass
 
         # Determine if we should delete the file
         should_delete = delete_file
@@ -250,16 +259,16 @@ class Download:
                 if os.path.exists(temp_file_path):
                     try:
                         os.remove(temp_file_path)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Failed to delete temp file {temp_file_path}: {e}")
             else:
                 # For completed downloads, delete the final file
                 file_path = self.get_file_path()
                 if os.path.exists(file_path):
                     try:
                         os.remove(file_path)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Failed to delete file {file_path}: {e}")
 
     def get_progress(self) -> Dict:
         """Get current progress info"""

@@ -189,7 +189,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 34. Fix bugs:
    - [x] 34.01 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
    - [x] 34.02 When the user tries to download a file that has the same name as a file in the target directory, we need to append incremental numbers to the file name rather than arbitrarily overwriting the file. for example, if file.iso exists in the download directory and the user downloads a new file.iso we should change the name to file (1).iso. if file.iso and file (1).iso exist then we should name the file: file (2).iso. If file (1).iso exists and the user tries to donwload a file named file (1).iso then we should name the file file (1) (1).iso.
-   - [ ] 34.03 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
+   - [x] 34.03 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
    - [ ] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [ ] 34.05 There are downloads in the DB that are not showing up in the UI
    - [ ] 34.06 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
@@ -229,9 +229,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 33 | Implemented URL filename parsing in WebUI: auto-extracts filename from URL input, decodes URL-encoded characters (%20 -> space), strips query parameters and fragments. Added onUrlChange() to auto-fill filename field and onFilenameChange() to track manual edits (prevents overwriting user input). Resets userModified flag on modal close. |
 | 34.01 | Fixed duplicate temp file issue: made DOWNLOAD_PATH and DATA_PATH always resolve to absolute paths using os.path.abspath(). This prevents path resolution differences based on current working directory. Deleted obsolete server/downloads directory that was created from previous relative path issues. |
 | 34.02 | Implemented intelligent filename conflict handling: added /api/downloads/check-filename endpoint and check_filename_conflict() method in DownloadManager. Auto-filled filenames (from URLs) silently rename to unique names (file (1).ext) when conflicts detected. User-typed filenames show yellow warning for conflicts. Overwrite dialog appears on submit with conflicting filename - if confirmed, deletes existing file via overwrite=true flag. Checks both final and .ndownload temp files. Re-checks conflicts when folder changes. Fixed .btn-danger styling to have proper padding/border-radius. |
+| 34.03 | Fixed temp file cleanup on cancellation: added await for task.cancel() to ensure download task fully completes before deleting temp file. This ensures file handles are closed before deletion attempt. Added error logging for failed deletions. |
 <!-- CONTEXT-END -->
 
 ---
