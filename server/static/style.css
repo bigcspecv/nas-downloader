@@ -756,6 +756,182 @@ body {
 }
 
 /* ============================================================================
+   Folder Browser
+   ============================================================================ */
+
+.folder-browser {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.folder-browser-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+}
+
+.breadcrumb-wrapper {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.breadcrumb-scroll-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    padding: 2px 8px 2px 4px;
+    background: linear-gradient(to right, var(--bg-secondary) 60%, transparent);
+    color: var(--text-muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.breadcrumb-scroll-indicator.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.breadcrumb {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.breadcrumb::-webkit-scrollbar {
+    height: 4px;
+}
+
+.breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.breadcrumb-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.breadcrumb-item:last-child {
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.breadcrumb-separator {
+    color: var(--text-muted);
+    margin: 0;
+    padding: 0 2px;
+}
+
+.btn-icon-small {
+    padding: 6px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon-small:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.folder-list {
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+}
+
+.folder-list-loading,
+.folder-list-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.folder-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.folder-item:last-child {
+    border-bottom: none;
+}
+
+.folder-item:hover {
+    background: var(--bg-secondary);
+}
+
+.folder-item.selected {
+    background: rgba(20, 184, 166, 0.15);
+    border-left: 3px solid var(--accent-primary);
+}
+
+.folder-item.parent-folder {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.folder-item-icon {
+    color: var(--accent-primary);
+    flex-shrink: 0;
+}
+
+.folder-item.parent-folder .folder-item-icon {
+    color: var(--text-muted);
+}
+
+.folder-item-name {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-item.parent-folder .folder-item-name {
+    color: var(--text-muted);
+}
+
+/* ============================================================================
    Buttons
    ============================================================================ */
 

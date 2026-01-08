@@ -60,6 +60,7 @@ let globalPaused = false;
 let currentFilter = 'all';
 let searchQuery = '';
 let selectedDownloads = new Set();
+let currentFolderPath = '';
 
 // Configuration
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
@@ -754,6 +755,9 @@ function openAddDownloadModal() {
     const modal = document.getElementById('addDownloadModal');
     modal.classList.add('active');
     document.getElementById('downloadUrl').focus();
+
+    // Load folders for the folder browser
+    navigateToFolder('');
 }
 
 function closeAddDownloadModal() {
@@ -763,6 +767,9 @@ function closeAddDownloadModal() {
     document.getElementById('downloadUrl').value = '';
     document.getElementById('downloadFolder').value = '';
     document.getElementById('downloadFilename').value = '';
+
+    // Reset folder browser to root
+    currentFolderPath = '';
 }
 
 function openSettingsModal() {
@@ -904,6 +911,182 @@ async function deleteDownload(id) {
         showNotification('success', 'Download Deleted', '');
     } catch (error) {
         showNotification('error', 'Failed to Delete', error.message);
+    }
+}
+
+// ============================================================================
+// Folder Browser
+// ============================================================================
+
+async function navigateToFolder(path) {
+    currentFolderPath = path;
+
+    const folderListEl = document.getElementById('folderList');
+    const hiddenInput = document.getElementById('downloadFolder');
+
+    // Show loading state
+    folderListEl.innerHTML = '<div class="folder-list-loading">Loading folders...</div>';
+
+    try {
+        const endpoint = path ? `/folders?path=${encodeURIComponent(path)}` : '/folders';
+        const data = await apiCall(endpoint);
+
+        // Update breadcrumb
+        updateBreadcrumb(path);
+
+        // Update hidden input
+        hiddenInput.value = path;
+
+        // Render folder list
+        renderFolderList(data.folders, path);
+    } catch (error) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">Failed to load folders</div>';
+        showNotification('error', 'Failed to Load Folders', error.message);
+    }
+}
+
+function updateBreadcrumb(path) {
+    const breadcrumbEl = document.getElementById('folderBreadcrumb');
+
+    if (!path) {
+        // Root directory
+        breadcrumbEl.innerHTML = `
+            <span class="breadcrumb-item" onclick="navigateToFolder('')">
+                <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                Downloads
+            </span>
+        `;
+    } else {
+        // Build breadcrumb from path parts
+        const parts = path.split('/').filter(p => p);
+        let html = `
+            <span class="breadcrumb-item" onclick="navigateToFolder('')">
+                <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                Downloads
+            </span>
+        `;
+
+        let currentPath = '';
+        parts.forEach((part) => {
+            currentPath += (currentPath ? '/' : '') + part;
+            const pathForClick = currentPath;
+            html += `<span class="breadcrumb-separator">/</span>`;
+            html += `<span class="breadcrumb-item" onclick="navigateToFolder('${escapeHtml(pathForClick)}')">${escapeHtml(part)}</span>`;
+        });
+
+        breadcrumbEl.innerHTML = html;
+    }
+
+    // Re-initialize icons in breadcrumb
+    initializeIcons();
+
+    // Scroll to the right to show current folder
+    setTimeout(() => {
+        breadcrumbEl.scrollLeft = breadcrumbEl.scrollWidth;
+        updateBreadcrumbScrollIndicator();
+    }, 0);
+
+    // Add scroll listener to update indicator
+    breadcrumbEl.removeEventListener('scroll', updateBreadcrumbScrollIndicator);
+    breadcrumbEl.addEventListener('scroll', updateBreadcrumbScrollIndicator);
+}
+
+function updateBreadcrumbScrollIndicator() {
+    const breadcrumbEl = document.getElementById('folderBreadcrumb');
+    const indicator = document.getElementById('breadcrumbScrollIndicator');
+
+    if (!breadcrumbEl || !indicator) return;
+
+    // Show indicator if scrolled to the right (scrollLeft > 0)
+    if (breadcrumbEl.scrollLeft > 5) {
+        indicator.classList.add('visible');
+    } else {
+        indicator.classList.remove('visible');
+    }
+}
+
+function renderFolderList(folders, currentPath) {
+    const folderListEl = document.getElementById('folderList');
+
+    if (folders.length === 0 && !currentPath) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">No folders yet. Click "New Folder" to create one.</div>';
+        return;
+    }
+
+    let html = '';
+
+    // Add parent folder option if not at root
+    if (currentPath) {
+        const parentPath = currentPath.split('/').slice(0, -1).join('/');
+        html += `
+            <div class="folder-item parent-folder" onclick="navigateToFolder('${escapeHtml(parentPath)}')">
+                <span class="icon-placeholder folder-item-icon" data-icon="arrow-up" data-class="icon icon-sm"></span>
+                <span class="folder-item-name">..</span>
+            </div>
+        `;
+    }
+
+    // Add folders
+    folders.forEach(folder => {
+        html += `
+            <div class="folder-item" onclick="selectFolder('${escapeHtml(folder.path)}')">
+                <span class="icon-placeholder folder-item-icon" data-icon="folder" data-class="icon icon-sm"></span>
+                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+            </div>
+        `;
+    });
+
+    if (folders.length === 0 && currentPath) {
+        html += '<div class="folder-list-empty">No subfolders</div>';
+    }
+
+    folderListEl.innerHTML = html;
+
+    // Re-initialize icons in folder list
+    initializeIcons();
+}
+
+function selectFolder(path) {
+    // Double-click behavior: navigate into the folder
+    navigateToFolder(path);
+}
+
+async function createNewFolder() {
+    const folderName = await showPrompt(
+        'Enter the name for the new folder:',
+        'New Folder',
+        '',
+        'Folder name'
+    );
+
+    if (!folderName) {
+        return; // User cancelled
+    }
+
+    // Validate folder name
+    if (folderName.includes('/') || folderName.includes('\\')) {
+        showNotification('error', 'Invalid Folder Name', 'Folder name cannot contain / or \\');
+        return;
+    }
+
+    if (folderName.trim() === '') {
+        showNotification('error', 'Invalid Folder Name', 'Folder name cannot be empty');
+        return;
+    }
+
+    // Construct new folder path
+    const newFolderPath = currentFolderPath
+        ? `${currentFolderPath}/${folderName}`
+        : folderName;
+
+    try {
+        await apiCall('/folders', 'POST', { path: newFolderPath });
+        showNotification('success', 'Folder Created', `Created folder: ${folderName}`);
+
+        // Reload the current folder view
+        navigateToFolder(currentFolderPath);
+    } catch (error) {
+        showNotification('error', 'Failed to Create Folder', error.message);
     }
 }
 

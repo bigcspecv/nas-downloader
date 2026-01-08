@@ -141,7 +141,26 @@
                     </div>
                     <div class="form-field">
                         <label for="downloadFolder">Folder (optional)</label>
-                        <input type="text" id="downloadFolder" placeholder="Leave empty for default location">
+                        <div class="folder-browser">
+                            <div class="folder-browser-header">
+                                <div class="breadcrumb-wrapper">
+                                    <div class="breadcrumb-scroll-indicator" id="breadcrumbScrollIndicator">.../</div>
+                                    <div class="breadcrumb" id="folderBreadcrumb">
+                                        <span class="breadcrumb-item" onclick="navigateToFolder('')">
+                                            <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                                            Downloads
+                                        </span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-icon-small" onclick="createNewFolder()" title="New Folder">
+                                    <span class="icon-placeholder" data-icon="folder-plus" data-class="icon icon-sm"></span>
+                                </button>
+                            </div>
+                            <div class="folder-list" id="folderList">
+                                <div class="folder-list-loading">Loading folders...</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="downloadFolder">
                     </div>
                     <div class="form-field">
                         <label for="downloadFilename">Custom Filename (optional)</label>
