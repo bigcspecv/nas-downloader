@@ -379,6 +379,10 @@ function handleWebSocketMessage(data) {
     if (data.type === 'status') {
         downloads = data.downloads || [];
         globalPaused = data.global_paused || false;
+
+        // Hide skeleton loaders on first data load
+        hideSkeletonLoaders();
+
         renderDownloads();
         updateStatusBar();
         updateCategoryCounts();
@@ -438,6 +442,26 @@ function updateConnectionStatus(connected) {
         } else {
             text.textContent = 'Disconnected';
         }
+    }
+}
+
+// ============================================================================
+// Skeleton Loaders
+// ============================================================================
+
+function hideSkeletonLoaders() {
+    // Hide all skeleton loaders
+    const skeletonLoaders = document.querySelectorAll('.skeleton-loader');
+    skeletonLoaders.forEach(loader => {
+        loader.style.display = 'none';
+    });
+
+    // Show actual content
+    const navContent = document.querySelector('.nav-content');
+    if (navContent) {
+        navContent.style.display = 'block';
+        // Re-initialize icons in nav
+        initializeIcons();
     }
 }
 

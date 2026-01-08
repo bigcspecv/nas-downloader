@@ -1160,6 +1160,97 @@ body {
 }
 
 /* ============================================================================
+   Skeleton Loaders
+   ============================================================================ */
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-tertiary) 0%,
+        var(--bg-hover) 50%,
+        var(--bg-tertiary) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-nav-item {
+    height: 40px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+}
+
+.skeleton-download-row {
+    display: grid;
+    grid-template-columns: 40px 2fr 120px 160px 100px 140px;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.skeleton-box {
+    height: 16px;
+    border-radius: 4px;
+}
+
+.skeleton-box-sm {
+    height: 12px;
+    width: 60%;
+    border-radius: 4px;
+}
+
+.skeleton-box-lg {
+    height: 20px;
+    border-radius: 4px;
+}
+
+.skeleton-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+.skeleton-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skeleton-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.skeleton-btn {
+    width: 60px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+/* Hide skeleton when content is loaded */
+.content-loaded .skeleton-loader {
+    display: none;
+}
+
+/* ============================================================================
    Utility Classes
    ============================================================================ */
 

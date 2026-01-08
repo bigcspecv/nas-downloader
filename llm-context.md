@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 35 <!-- CURRENT-STEP -->
+## Current Step: 36 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -258,9 +258,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 34.04 | Fixed rate limit input validation: changed from type='number' to type='text' with pattern='[0-9]*' and inputmode='numeric' to prevent decimal entry at input level using inline oninput handler. Added rate limit display to status bar showing current limit (unlimited or formatted speed). Made rate limit display use formatSpeed() for consistency with download speed formatting. |
 | 34.05 | Changed temp file naming from filename.ext.ndownload to {download_id}.ndownload for crash recovery and uniqueness. Updated get_temp_file_path() to use ID-based naming, simplified _get_unique_filename() to only check final files, and updated add_download() overwrite logic to only delete final files since temp files are ID-based. |
 | 34.06 | Updated download actions UI to show disabled 'Queued' button for queued downloads instead of 'Pause' button. Added .btn-disabled CSS class with reduced opacity and disabled hover effects for status-only buttons. |
+| 35 | Added initial page load skeleton screens with shimmer animation for sidebar navigation (5 items) and downloads table (3 rows). Skeletons automatically hide and show real content when first WebSocket status message is received. |
 <!-- CONTEXT-END -->
 
 ---
