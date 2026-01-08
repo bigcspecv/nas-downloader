@@ -27,27 +27,27 @@
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-item active" data-filter="all" onclick="switchCategory('all')">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-queue-list"></use></svg>
+                        <span class="icon-placeholder" data-icon="queue-list" data-class="icon"></span>
                         <span>All Downloads</span>
                         <span class="nav-count" id="countAll">0</span>
                     </div>
                     <div class="nav-item" data-filter="active" onclick="switchCategory('active')">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-clock"></use></svg>
+                        <span class="icon-placeholder" data-icon="clock" data-class="icon"></span>
                         <span>Active</span>
                         <span class="nav-count" id="countActive">0</span>
                     </div>
                     <div class="nav-item" data-filter="completed" onclick="switchCategory('completed')">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-check-circle"></use></svg>
+                        <span class="icon-placeholder" data-icon="check-circle" data-class="icon"></span>
                         <span>Completed</span>
                         <span class="nav-count" id="countCompleted">0</span>
                     </div>
                     <div class="nav-item" data-filter="paused" onclick="switchCategory('paused')">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-pause"></use></svg>
+                        <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
                         <span>Paused</span>
                         <span class="nav-count" id="countPaused">0</span>
                     </div>
                     <div class="nav-item" data-filter="failed" onclick="switchCategory('failed')">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-exclamation-circle"></use></svg>
+                        <span class="icon-placeholder" data-icon="exclamation-circle" data-class="icon"></span>
                         <span>Failed</span>
                         <span class="nav-count" id="countFailed">0</span>
                     </div>
@@ -56,7 +56,7 @@
 
             <div class="sidebar-footer">
                 <button class="sidebar-btn" onclick="openSettingsModal()" title="Settings">
-                    <svg class="icon"><use href="/static/images/icons.svg#icon-cog"></use></svg>
+                    <span class="icon-placeholder" data-icon="cog-6-tooth" data-class="icon"></span>
                     <span>Settings</span>
                 </button>
             </div>
@@ -68,21 +68,21 @@
             <div class="toolbar">
                 <div class="toolbar-left">
                     <button class="btn-action btn-primary" onclick="openAddDownloadModal()">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-plus"></use></svg>
+                        <span class="icon-placeholder" data-icon="plus" data-class="icon"></span>
                         New Download
                     </button>
                     <button class="btn-action" id="playPauseBtn" onclick="togglePauseAll()">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-pause"></use></svg>
+                        <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
                         Pause All
                     </button>
                     <button class="btn-action btn-danger" id="deleteSelectedBtn" onclick="deleteSelected()">
-                        <svg class="icon"><use href="/static/images/icons.svg#icon-trash"></use></svg>
+                        <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
                         Delete selected
                     </button>
                 </div>
                 <div class="toolbar-right">
                     <div class="search-box" id="searchBox">
-                        <svg class="icon icon-sm"><use href="/static/images/icons.svg#icon-search"></use></svg>
+                        <span class="icon-placeholder" data-icon="magnifying-glass" data-class="icon icon-sm"></span>
                         <input type="text" id="searchInput" placeholder="Search downloads..." oninput="filterDownloads()">
                     </div>
                 </div>
@@ -103,7 +103,7 @@
                     </div>
                     <div class="table-body" id="downloadsTable">
                         <div class="empty-state">
-                            <svg class="icon icon-lg"><use href="/static/images/icons.svg#icon-download"></use></svg>
+                            <span class="icon-placeholder" data-icon="arrow-down-tray" data-class="icon icon-lg"></span>
                             <p>No downloads yet</p>
                             <p class="hint">Click "New Download" to get started</p>
                         </div>
@@ -114,7 +114,7 @@
             <!-- Status Bar -->
             <div class="status-bar">
                 <div class="status-item">
-                    <svg class="icon icon-sm"><use href="/static/images/icons.svg#icon-download"></use></svg>
+                    <span class="icon-placeholder" data-icon="arrow-down-tray" data-class="icon icon-sm"></span>
                     <span id="globalDownloadSpeed">0 B/s</span>
                 </div>
                 <div class="status-separator"></div>

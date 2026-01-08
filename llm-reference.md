@@ -230,3 +230,70 @@ if key == 'max_concurrent_downloads' and int_value < 1:
     return error
 ```
 <!-- SECTION-END: Settings Validation -->
+
+<!-- SECTION-START: Icon System -->
+### Icon System
+
+The project uses individual Heroicons SVG files that are loaded and inlined via JavaScript. This approach avoids the fragility of sprite files while maintaining full CSS styling control.
+
+**Architecture:**
+- **Source:** Official Heroicons (npm package) in `node_modules/heroicons/24/outline/`
+- **Deployed:** Individual SVG files in `server/static/images/icons/`
+- **Loading:** JavaScript fetches and inlines SVGs on page load
+- **Styling:** Inlined SVGs support full CSS control (colors via `currentColor`, sizes via classes)
+
+**HTML Usage:**
+```html
+<!-- Static HTML: Use placeholders that JavaScript will replace -->
+<span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
+<span class="icon-placeholder" data-icon="arrow-down-tray" data-class="icon icon-lg"></span>
+```
+
+**JavaScript Usage:**
+```javascript
+// Dynamic content: Generate placeholder string
+button.innerHTML = `
+    <span class="icon-placeholder" data-icon="play" data-class="icon"></span>
+    Resume All
+`;
+
+// After updating DOM, initialize icons
+initializeIcons();
+```
+
+**How it works:**
+1. Page loads with `<span class="icon-placeholder">` placeholders
+2. On `DOMContentLoaded`, `initializeIcons()` runs:
+   - Finds all `.icon-placeholder` elements
+   - Fetches SVG from `/static/images/icons/{name}.svg` (cached)
+   - Parses SVG and replaces placeholder with actual `<svg>` element
+   - Applies CSS classes from `data-class` attribute
+3. After dynamically updating DOM, call `initializeIcons()` again
+
+**Adding new icons:**
+```bash
+# Windows
+llm-tools/add-icon.bat arrow-right
+
+# Unix/Mac
+llm-tools/add-icon.sh arrow-right
+```
+
+Script copies icon from `node_modules/heroicons/24/outline/` to `server/static/images/icons/`.
+
+**Icon classes:**
+- `.icon` - Default size (18px)
+- `.icon-sm` - Small (14px)
+- `.icon-lg` - Large (64px)
+
+**Why individual files instead of sprite:**
+- ✅ **Isolation:** One broken file doesn't break all icons
+- ✅ **Official source:** Direct from Heroicons package, no manual editing
+- ✅ **Full CSS control:** Inlined SVGs support `currentColor` and all styling
+- ✅ **Easy maintenance:** Add icons by copying files, can't break existing ones
+- ✅ **HTTP/2 friendly:** Multiple small files are fine with HTTP/2
+
+**Implementation:** See `app.js` lines 1-49 for icon loading system.
+
+**Available icons:** Browse at [heroicons.com](https://heroicons.com) (300+ icons available)
+<!-- SECTION-END: Icon System -->

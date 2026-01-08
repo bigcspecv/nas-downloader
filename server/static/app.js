@@ -1,3 +1,57 @@
+// ============================================================================
+// Icon System - Load and inline Heroicons SVGs
+// ============================================================================
+
+const iconCache = {};
+
+async function loadIcon(name) {
+    if (iconCache[name]) {
+        return iconCache[name];
+    }
+
+    try {
+        const response = await fetch(`/static/images/icons/${name}.svg`);
+        if (!response.ok) {
+            console.error(`Failed to load icon: ${name}`);
+            return '';
+        }
+        const svgText = await response.text();
+        iconCache[name] = svgText;
+        return svgText;
+    } catch (error) {
+        console.error(`Error loading icon ${name}:`, error);
+        return '';
+    }
+}
+
+function icon(name, className = 'icon') {
+    // Return a placeholder that will be replaced with the actual SVG
+    return `<span class="icon-placeholder" data-icon="${name}" data-class="${className}"></span>`;
+}
+
+async function initializeIcons() {
+    const placeholders = document.querySelectorAll('.icon-placeholder');
+    for (const placeholder of placeholders) {
+        const iconName = placeholder.dataset.icon;
+        const iconClass = placeholder.dataset.class;
+        const svgContent = await loadIcon(iconName);
+
+        if (svgContent) {
+            const temp = document.createElement('div');
+            temp.innerHTML = svgContent;
+            const svg = temp.firstElementChild;
+            if (svg) {
+                svg.setAttribute('class', iconClass);
+                placeholder.replaceWith(svg);
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Global State
+// ============================================================================
+
 let ws = null;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
@@ -212,9 +266,15 @@ async function initializeApiKey() {
 
 // Wait for DOM to be ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApiKey);
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initializeIcons();
+        initializeApiKey();
+    });
 } else {
-    initializeApiKey();
+    (async () => {
+        await initializeIcons();
+        initializeApiKey();
+    })();
 }
 
 // ============================================================================
@@ -452,11 +512,12 @@ function renderDownloads() {
     if (filtered.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <svg class="icon icon-lg"><use href="/static/images/icons.svg#icon-download"></use></svg>
+                <span class="icon-placeholder" data-icon="arrow-down-tray" data-class="icon icon-lg"></span>
                 <p>No downloads ${currentFilter !== 'all' ? 'in this category' : 'yet'}</p>
                 <p class="hint">Click "New Download" to get started</p>
             </div>
         `;
+        initializeIcons();
         return;
     }
 
@@ -511,7 +572,7 @@ function renderDownloads() {
                         ${download.status === 'paused' ?
                             `<button class="btn-icon" onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
                         <button class="btn-icon btn-danger" onclick="deleteDownload('${download.id}')">
-                            <svg class="icon"><use href="/static/images/icons.svg#icon-trash"></use></svg>
+                            <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
                         </button>
                     </div>
                 </div>
@@ -521,6 +582,7 @@ function renderDownloads() {
 
     updateSelectAllCheckbox();
     updateDeleteButton();
+    initializeIcons();
 }
 
 function getProgressClass(status) {
@@ -658,15 +720,16 @@ function updatePauseButton() {
 
     if (globalPaused) {
         button.innerHTML = `
-            <svg class="icon"><use href="/static/images/icons.svg#icon-play"></use></svg>
+            <span class="icon-placeholder" data-icon="play" data-class="icon"></span>
             Resume All
         `;
     } else {
         button.innerHTML = `
-            <svg class="icon"><use href="/static/images/icons.svg#icon-pause"></use></svg>
+            <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
             Pause All
         `;
     }
+    initializeIcons();
 }
 
 async function togglePauseAll() {

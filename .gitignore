@@ -184,3 +184,9 @@ cython_debug/
 downloads/
 data/
 *.db
+
+# Node.js dependencies (for Heroicons)
+node_modules/
+package-lock.json
+package.json
+.claude/

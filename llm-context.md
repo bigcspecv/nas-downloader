@@ -284,6 +284,7 @@ Coding patterns are documented in [llm-reference.md](llm-reference.md). Use the 
 - Error Response Format
 - Path Traversal Protection
 - Settings Validation
+- Icon System
 
 ---
 

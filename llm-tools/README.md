@@ -123,6 +123,46 @@ In "Before You Stop" checklist, step 3 (if Working Context has 4+ entries after 
 
 ---
 
+## add-icon.sh / add-icon.bat
+
+Add a new Heroicon to the project.
+
+### Usage
+
+**Windows:**
+```bash
+llm-tools/add-icon.bat arrow-right
+```
+
+**Unix/Mac:**
+```bash
+llm-tools/add-icon.sh arrow-right
+```
+
+### How it works
+
+1. Checks if heroicons is installed (runs `npm install` if needed)
+2. Copies icon from `node_modules/heroicons/24/outline/` to `server/static/images/icons/`
+3. Shows usage examples for HTML and JavaScript
+
+### When to use
+
+When adding a new icon to the UI that doesn't exist in `server/static/images/icons/`. Browse available icons at [heroicons.com](https://heroicons.com).
+
+### Example output
+
+```
+✓ Copied arrow-right.svg to server/static/images/icons/
+
+To use it in your HTML:
+  <span class="icon-placeholder" data-icon="arrow-right" data-class="icon"></span>
+
+To use it in JavaScript:
+  icon('arrow-right', 'icon')
+```
+
+---
+
 ## Benefits
 
 ✅ **Zero tokens burned** - No file reading required
