@@ -307,5 +307,6 @@ None.
 8. **Test the code with the user's help before committing** - when possible, verify functionality works as expected
 9. After testing and confirming it works, prompt the user to commit with a short single-line commit message
 10. NEVER run git commands directly - only provide commit messages for the user to execute
+11. **NEVER use inline styling** - all styles must be defined in CSS files, not in HTML style attributes
 
 ---

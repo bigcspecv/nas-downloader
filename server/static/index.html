@@ -15,16 +15,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="app-brand">
-                    <svg class="brand-icon" width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <rect width="28" height="28" rx="4" fill="url(#grad1)"/>
-                        <path d="M14 8v10m0 0l-4-4m4 4l4-4" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                        <defs>
-                            <linearGradient id="grad1" x1="0" y1="0" x2="28" y2="28">
-                                <stop offset="0%" stop-color="#14b8a6"/>
-                                <stop offset="100%" stop-color="#0891b2"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
+                    <img src="/static/images/logo.svg" alt="nas-downloader" class="brand-icon">
                     <span class="brand-name">nas-downloader</span>
                 </div>
                 <div class="connection-indicator">
@@ -246,7 +237,7 @@
             </div>
             <div class="modal-body">
                 <p id="dialogMessage" class="dialog-message"></p>
-                <div id="dialogInputContainer" class="form-field" style="display: none;">
+                <div id="dialogInputContainer" class="form-field dialog-input-container">
                     <input type="text" id="dialogInput" class="dialog-input">
                 </div>
                 <div class="modal-footer">

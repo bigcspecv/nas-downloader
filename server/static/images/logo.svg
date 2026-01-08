@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
   <!-- NAS chassis -->
-  <rect x="48" y="44" width="160" height="168" rx="18" stroke="currentColor" stroke-width="12"/>
-  <path d="M48 92h160" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-  <path d="M48 140h160" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+  <rect x="48" y="44" width="160" height="168" rx="18" stroke="white" stroke-width="12"/>
+  <path d="M48 92h160" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M48 140h160" stroke="white" stroke-width="12" stroke-linecap="round"/>
 
   <!-- Drive LEDs -->
-  <circle cx="72" cy="72" r="6" fill="currentColor"/>
-  <circle cx="96" cy="72" r="6" fill="currentColor"/>
-  <circle cx="72" cy="120" r="6" fill="currentColor"/>
-  <circle cx="96" cy="120" r="6" fill="currentColor"/>
+  <circle cx="72" cy="72" r="6" fill="white"/>
+  <circle cx="96" cy="72" r="6" fill="white"/>
+  <circle cx="72" cy="120" r="6" fill="white"/>
+  <circle cx="96" cy="120" r="6" fill="white"/>
 
   <!-- Download arrow -->
-  <path d="M128 116v62" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
-  <path d="M100 154l28 28 28-28" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M128 116v62" stroke="white" stroke-width="14" stroke-linecap="round"/>
+  <path d="M100 154l28 28 28-28" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

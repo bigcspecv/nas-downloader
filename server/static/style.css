@@ -65,6 +65,10 @@ body {
 
 .brand-icon {
     flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+    border-radius: 6px;
 }
 
 .brand-name {
@@ -244,6 +248,7 @@ body {
 }
 
 .btn-action.btn-danger {
+    background: transparent;
     border-color: var(--danger);
     color: var(--danger);
 }
@@ -466,6 +471,7 @@ body {
 
 .btn-icon.btn-danger {
     color: var(--danger);
+    background: transparent;
 }
 
 .btn-icon.btn-danger:hover {
@@ -694,6 +700,10 @@ body {
     background: var(--bg-primary);
 }
 
+.dialog-input-container {
+    display: none;
+}
+
 /* ============================================================================
    Buttons
    ============================================================================ */
@@ -731,12 +741,23 @@ body {
 }
 
 .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Modal footer danger buttons have solid red background */
+.modal-footer .btn-danger {
     background: var(--danger);
     color: white;
     border: none;
 }
 
-.btn-danger:hover {
+.modal-footer .btn-danger:hover {
     opacity: 0.9;
     transform: translateY(-1px);
 }
