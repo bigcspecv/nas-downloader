@@ -467,7 +467,6 @@ function renderDownloads() {
         const speedBps = progress.speed_bps || 0;
 
         const totalMB = totalBytes > 0 ? (totalBytes / 1048576).toFixed(2) : '?';
-        const speedMBps = (speedBps / 1048576).toFixed(2);
 
         const progressClass = getProgressClass(download.status);
         const isSelected = selectedDownloads.has(download.id);
@@ -502,7 +501,7 @@ function renderDownloads() {
                 </div>
                 <div class="td">
                     <div class="download-speed ${speedBps > 0 ? '' : 'inactive'}">
-                        ${speedBps > 0 ? speedMBps + ' MB/s' : '-'}
+                        ${speedBps > 0 ? formatSpeed(speedBps) : '-'}
                     </div>
                 </div>
                 <div class="td">
@@ -535,6 +534,19 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatSpeed(speedBps) {
+    if (speedBps >= 1048576) {
+        // >= 1 MB/s: show MB/s
+        return (speedBps / 1048576).toFixed(2) + ' MB/s';
+    } else if (speedBps >= 1024) {
+        // >= 1 KB/s: show KB/s
+        return (speedBps / 1024).toFixed(2) + ' KB/s';
+    } else {
+        // < 1 KB/s: show B/s
+        return speedBps.toFixed(0) + ' B/s';
+    }
 }
 
 // ============================================================================
@@ -600,8 +612,7 @@ function updateStatusBar() {
 
     const speedElement = document.getElementById('globalDownloadSpeed');
     if (totalSpeed > 0) {
-        const speedMBps = (totalSpeed / 1048576).toFixed(2);
-        speedElement.textContent = `${speedMBps} MB/s`;
+        speedElement.textContent = formatSpeed(totalSpeed);
     } else {
         speedElement.textContent = '0 B/s';
     }

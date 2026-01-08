@@ -171,15 +171,21 @@ class Download:
                 # Final update
                 if not self.cancelled:
                     self.status = 'completed'
+                    self.speed_bps = 0
+                    self.eta_seconds = 0
                     self.update_db()
 
         except asyncio.CancelledError:
             self.status = 'paused'
+            self.speed_bps = 0
+            self.eta_seconds = 0
             self.update_db()
 
         except Exception as e:
             self.status = 'failed'
             self.error_message = str(e)
+            self.speed_bps = 0
+            self.eta_seconds = 0
             self.update_db()
 
         finally:
@@ -192,6 +198,8 @@ class Download:
             raise ValueError(f"Cannot pause download with status '{self.status}'")
         self.paused = True
         self.status = 'paused'
+        self.speed_bps = 0
+        self.eta_seconds = 0
         self.update_db()
 
     async def resume(self):
