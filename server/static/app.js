@@ -764,9 +764,16 @@ function closeAddDownloadModal() {
     const modal = document.getElementById('addDownloadModal');
     modal.classList.remove('active');
 
-    document.getElementById('downloadUrl').value = '';
-    document.getElementById('downloadFolder').value = '';
-    document.getElementById('downloadFilename').value = '';
+    const urlField = document.getElementById('downloadUrl');
+    const folderField = document.getElementById('downloadFolder');
+    const filenameField = document.getElementById('downloadFilename');
+
+    urlField.value = '';
+    folderField.value = '';
+    filenameField.value = '';
+
+    // Reset userModified flag for filename field
+    delete filenameField.dataset.userModified;
 
     // Reset folder browser to root
     currentFolderPath = '';
@@ -836,6 +843,58 @@ async function apiCall(endpoint, method = 'GET', body = null, buttonElement = nu
 // ============================================================================
 // Download Management
 // ============================================================================
+
+function parseFilenameFromUrl(url) {
+    try {
+        // Parse the URL
+        const urlObj = new URL(url);
+
+        // Get the pathname (automatically strips query params and fragments)
+        let pathname = urlObj.pathname;
+
+        // Extract the filename (last segment of the path)
+        let filename = pathname.split('/').pop();
+
+        // If filename is empty (e.g., URL ends with /), return empty
+        if (!filename) {
+            return '';
+        }
+
+        // Decode URL-encoded characters (e.g., %20 -> space, %2B -> +)
+        filename = decodeURIComponent(filename);
+
+        return filename;
+    } catch (error) {
+        // Invalid URL, return empty string
+        console.error('Error parsing filename from URL:', error);
+        return '';
+    }
+}
+
+function onUrlChange() {
+    const urlField = document.getElementById('downloadUrl');
+    const filenameField = document.getElementById('downloadFilename');
+
+    const url = urlField.value.trim();
+
+    // Only auto-fill if filename field is empty or unchanged from previous auto-fill
+    if (url && !filenameField.dataset.userModified) {
+        const parsedFilename = parseFilenameFromUrl(url);
+        filenameField.value = parsedFilename;
+        filenameField.placeholder = parsedFilename ? parsedFilename : 'Auto-detected from URL';
+    }
+}
+
+function onFilenameChange() {
+    const filenameField = document.getElementById('downloadFilename');
+
+    // Mark that user has manually edited the filename
+    if (filenameField.value.trim()) {
+        filenameField.dataset.userModified = 'true';
+    } else {
+        delete filenameField.dataset.userModified;
+    }
+}
 
 async function addDownload(event) {
     event.preventDefault();

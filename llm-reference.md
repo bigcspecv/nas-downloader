@@ -36,6 +36,7 @@ Historical steps that have been archived from the main context document.
 | 22 | Added max concurrent downloads UI control with validation, update function, and real-time sync via WebSocket. All settings (rate limit and max concurrent) now update automatically across all connected users when changed. |
 | 23 | Fixed resume_all to respect max_concurrent_downloads limit. Changed resume_all to set paused downloads to queued status instead of starting them immediately, allowing process_queue to enforce concurrency limits properly. |
 | 24 | Overhauled WebUI with unique dark theme design: left sidebar navigation with categories (All/Active/Completed/Paused/Failed), teal/cyan gradient accent colors, table-based download list, toolbar with New Download/Pause All/Delete buttons, always-visible search, modals for add download and settings, bottom status bar showing global speed and active downloads. Replaced generic Free Download Manager clone with unique nas-downloader branding. |
+| 24 | Completed WebUI overhaul with custom modal system and authentication error handling. Created generic dialog modal (confirm/prompt/alert) with keyboard support and danger mode, replacing all standard JS dialogs. Fixed WebSocket auth failures to send auth_error message type, stop reconnect loop, and prompt for new API key using custom modal. |
 <!-- ARCHIVE-END -->
 
 ---

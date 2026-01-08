@@ -137,7 +137,7 @@
                 <form onsubmit="addDownload(event)">
                     <div class="form-field">
                         <label for="downloadUrl">Download URL *</label>
-                        <input type="url" id="downloadUrl" placeholder="https://example.com/file.zip" required autofocus>
+                        <input type="url" id="downloadUrl" placeholder="https://example.com/file.zip" required autofocus oninput="onUrlChange()">
                     </div>
                     <div class="form-field">
                         <label for="downloadFolder">Folder (optional)</label>
@@ -164,7 +164,7 @@
                     </div>
                     <div class="form-field">
                         <label for="downloadFilename">Custom Filename (optional)</label>
-                        <input type="text" id="downloadFilename" placeholder="Auto-detected from URL">
+                        <input type="text" id="downloadFilename" placeholder="Auto-detected from URL" oninput="onFilenameChange()">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-secondary" onclick="closeAddDownloadModal()">Cancel</button>

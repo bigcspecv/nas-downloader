@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 33 <!-- CURRENT-STEP -->
+## Current Step: 34 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -185,6 +185,12 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 30. Implement in-progress file extension (e.g., .download or .crdownload)
 - [x] 31. Rename file on completion (remove in-progress extension)
 - [x] 32. Handle resume/pause with in-progress filenames
+- [ ] 33. Implement filename parsing in the webui when entering a url (strip urlenc values, etc.)
+- [ ] 34. Fix bugs:
+   - [ ] 34.01 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
+   - [ ] 34.02 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
+   - [ ] 34.03 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
+   - [ ] 34.04 There are downloads in the DB that are not showing up in the UI
 
 ### Phase 9: Testing & Edge Cases
 - [ ] 35. Test network errors (timeout, connection drop, DNS failure)
@@ -220,9 +226,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 24 | Completed WebUI overhaul with custom modal system and authentication error handling. Created generic dialog modal (confirm/prompt/alert) with keyboard support and danger mode, replacing all standard JS dialogs. Fixed WebSocket auth failures to send auth_error message type, stop reconnect loop, and prompt for new API key using custom modal. |
 | 25-29 | Implemented folder browser UI component with Save As dialog appearance: breadcrumb navigation with compact spacing and auto-scroll to current folder, folder list with click-to-navigate and parent folder (..) support, New Folder button with validation, animated scroll indicator (.../) that fades in when breadcrumb is scrolled. Used llm-tools/add-icon.bat to properly add heroicons (home, folder, folder-plus, arrow-up). |
 | 30-32 | Implemented in-progress file extension system: downloads now write to .ndownload temp files during transfer, automatically rename to final filename on completion, and properly handle pause/resume with temp files. Updated cancel() to delete correct file based on completion status. Fixed download-row folder icon: replaced emoji with themed folder icon and aligned with flexbox. |
+| 33 | Implemented URL filename parsing in WebUI: auto-extracts filename from URL input, decodes URL-encoded characters (%20 -> space), strips query parameters and fragments. Added onUrlChange() to auto-fill filename field and onFilenameChange() to track manual edits (prevents overwriting user input). Resets userModified flag on modal close. |
 <!-- CONTEXT-END -->
 
 ---
