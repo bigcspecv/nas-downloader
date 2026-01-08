@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 34 <!-- CURRENT-STEP -->
+## Current Step: 35 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -186,13 +186,13 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 31. Rename file on completion (remove in-progress extension)
 - [x] 32. Handle resume/pause with in-progress filenames
 - [x] 33. Implement filename parsing in the webui when entering a url (strip urlenc values, etc.)
-- [ ] 34. Fix bugs:
+- [x] 34. Fix bugs:
    - [x] 34.01 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
    - [x] 34.02 When the user tries to download a file that has the same name as a file in the target directory, we need to append incremental numbers to the file name rather than arbitrarily overwriting the file. for example, if file.iso exists in the download directory and the user downloads a new file.iso we should change the name to file (1).iso. if file.iso and file (1).iso exist then we should name the file: file (2).iso. If file (1).iso exists and the user tries to donwload a file named file (1).iso then we should name the file file (1) (1).iso.
    - [x] 34.03 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
    - [x] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [x] 34.05 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
-   - [ ] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
+   - [x] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
 
 ### Phase 9: UI Polish
 - [ ] 35. Add loading states (spinners, skeleton screens)
@@ -258,9 +258,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 34.03 | Fixed temp file cleanup on cancellation: added await for task.cancel() to ensure download task fully completes before deleting temp file. This ensures file handles are closed before deletion attempt. Added error logging for failed deletions. |
 | 34.04 | Fixed rate limit input validation: changed from type='number' to type='text' with pattern='[0-9]*' and inputmode='numeric' to prevent decimal entry at input level using inline oninput handler. Added rate limit display to status bar showing current limit (unlimited or formatted speed). Made rate limit display use formatSpeed() for consistency with download speed formatting. |
 | 34.05 | Changed temp file naming from filename.ext.ndownload to {download_id}.ndownload for crash recovery and uniqueness. Updated get_temp_file_path() to use ID-based naming, simplified _get_unique_filename() to only check final files, and updated add_download() overwrite logic to only delete final files since temp files are ID-based. |
+| 34.06 | Updated download actions UI to show disabled 'Queued' button for queued downloads instead of 'Pause' button. Added .btn-disabled CSS class with reduced opacity and disabled hover effects for status-only buttons. |
 <!-- CONTEXT-END -->
 
 ---

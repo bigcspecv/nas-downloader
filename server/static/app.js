@@ -568,8 +568,10 @@ function renderDownloads() {
                 </div>
                 <div class="td">
                     <div class="download-actions">
-                        ${download.status === 'downloading' || download.status === 'queued' ?
+                        ${download.status === 'downloading' ?
                             `<button class="btn-icon" onclick="pauseDownload('${download.id}')">Pause</button>` : ''}
+                        ${download.status === 'queued' ?
+                            `<button class="btn-icon btn-disabled" disabled>Queued</button>` : ''}
                         ${download.status === 'paused' ?
                             `<button class="btn-icon" onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
                         <button class="btn-icon btn-danger" onclick="deleteDownload('${download.id}')">

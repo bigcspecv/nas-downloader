@@ -513,6 +513,18 @@ body {
     border-color: var(--danger);
 }
 
+.btn-icon.btn-disabled {
+    opacity: 0.6;
+    cursor: default;
+    color: var(--text-muted);
+}
+
+.btn-icon.btn-disabled:hover {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border-color);
+}
+
 /* Empty State */
 .empty-state {
     display: flex;
