@@ -121,6 +121,11 @@
                 <div class="status-item">
                     <span id="activeDownloadsCount">0 active downloads</span>
                 </div>
+                <div class="status-separator"></div>
+                <div class="status-item">
+                    <span class="icon-placeholder" data-icon="signal" data-class="icon icon-sm"></span>
+                    <span id="rateLimitDisplay">Limit: Unlimited</span>
+                </div>
             </div>
         </main>
     </div>
@@ -188,14 +193,14 @@
                 <div class="form-field">
                     <label for="rateLimit">Global Rate Limit</label>
                     <div class="input-with-select">
-                        <input type="number" id="rateLimit" placeholder="0 = unlimited" min="0" value="0">
+                        <input type="text" id="rateLimit" placeholder="0 = unlimited" pattern="[0-9]*" inputmode="numeric" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         <select id="rateLimitUnit">
                             <option value="1">B/s</option>
                             <option value="1024">KB/s</option>
                             <option value="1048576" selected>MB/s</option>
                         </select>
                     </div>
-                    <small>Set to 0 for unlimited download speed</small>
+                    <small>Whole numbers only. Set to 0 for unlimited. Use smaller units (KB/s, B/s) for precision.</small>
                 </div>
                 <div class="form-field">
                     <label for="maxConcurrent">Max Concurrent Downloads</label>

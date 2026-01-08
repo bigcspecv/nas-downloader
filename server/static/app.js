@@ -1258,9 +1258,45 @@ function updateSettingsUI(settings) {
     const rateLimitBps = parseInt(settings.global_rate_limit_bps) || 0;
     const maxConcurrent = parseInt(settings.max_concurrent_downloads) || 3;
 
-    const rateLimitMBps = Math.floor(rateLimitBps / 1048576);
-    document.getElementById('rateLimit').value = rateLimitMBps;
+    // Intelligently convert rate limit to appropriate unit
+    let rateLimitValue = 0;
+    let rateLimitUnit = 1048576; // Default to MB/s
+
+    if (rateLimitBps === 0) {
+        // 0 means unlimited
+        rateLimitValue = 0;
+        rateLimitUnit = 1048576; // MB/s
+    } else if (rateLimitBps >= 1048576 && rateLimitBps % 1048576 === 0) {
+        // Evenly divisible by 1 MB - use MB/s
+        rateLimitValue = rateLimitBps / 1048576;
+        rateLimitUnit = 1048576;
+    } else if (rateLimitBps >= 1024 && rateLimitBps % 1024 === 0) {
+        // Evenly divisible by 1 KB - use KB/s
+        rateLimitValue = rateLimitBps / 1024;
+        rateLimitUnit = 1024;
+    } else {
+        // Use B/s for anything else
+        rateLimitValue = rateLimitBps;
+        rateLimitUnit = 1;
+    }
+
+    document.getElementById('rateLimit').value = rateLimitValue;
+    document.getElementById('rateLimitUnit').value = rateLimitUnit;
     document.getElementById('maxConcurrent').value = maxConcurrent;
+
+    // Update status bar rate limit display
+    updateRateLimitDisplay(rateLimitBps);
+}
+
+function updateRateLimitDisplay(rateLimitBps) {
+    const displayElement = document.getElementById('rateLimitDisplay');
+
+    if (rateLimitBps === 0) {
+        displayElement.textContent = 'Limit: Unlimited';
+    } else {
+        // Use the same formatting as download speeds for consistency
+        displayElement.textContent = `Limit: ${formatSpeed(rateLimitBps)}`;
+    }
 }
 
 async function saveSettings() {
@@ -1269,7 +1305,21 @@ async function saveSettings() {
     const maxConcurrent = document.getElementById('maxConcurrent').value.trim();
 
     try {
-        const rateLimitBps = parseInt(rateLimitValue) * rateLimitUnit;
+        // Validate rate limit is a valid non-negative integer
+        const rateLimitNum = parseInt(rateLimitValue);
+        if (isNaN(rateLimitNum) || rateLimitNum < 0) {
+            showNotification('error', 'Invalid Rate Limit', 'Please enter a valid non-negative number');
+            return;
+        }
+
+        // Validate max concurrent is a valid positive integer
+        const maxConcurrentNum = parseInt(maxConcurrent);
+        if (isNaN(maxConcurrentNum) || maxConcurrentNum < 1) {
+            showNotification('error', 'Invalid Max Concurrent', 'Please enter a valid positive number');
+            return;
+        }
+
+        const rateLimitBps = rateLimitNum * rateLimitUnit;
 
         await apiCall('/settings', 'PATCH', {
             global_rate_limit_bps: rateLimitBps.toString(),

@@ -190,7 +190,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 34.01 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
    - [x] 34.02 When the user tries to download a file that has the same name as a file in the target directory, we need to append incremental numbers to the file name rather than arbitrarily overwriting the file. for example, if file.iso exists in the download directory and the user downloads a new file.iso we should change the name to file (1).iso. if file.iso and file (1).iso exist then we should name the file: file (2).iso. If file (1).iso exists and the user tries to donwload a file named file (1).iso then we should name the file file (1) (1).iso.
    - [x] 34.03 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
-   - [ ] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
+   - [x] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [ ] 34.05 There are downloads in the DB that are not showing up in the UI
    - [ ] 34.06 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
    - [ ] 34.07 Update the pause button for individual downloads to show "Queued" when the download is queued.
@@ -229,9 +229,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 34.01 | Fixed duplicate temp file issue: made DOWNLOAD_PATH and DATA_PATH always resolve to absolute paths using os.path.abspath(). This prevents path resolution differences based on current working directory. Deleted obsolete server/downloads directory that was created from previous relative path issues. |
 | 34.02 | Implemented intelligent filename conflict handling: added /api/downloads/check-filename endpoint and check_filename_conflict() method in DownloadManager. Auto-filled filenames (from URLs) silently rename to unique names (file (1).ext) when conflicts detected. User-typed filenames show yellow warning for conflicts. Overwrite dialog appears on submit with conflicting filename - if confirmed, deletes existing file via overwrite=true flag. Checks both final and .ndownload temp files. Re-checks conflicts when folder changes. Fixed .btn-danger styling to have proper padding/border-radius. |
 | 34.03 | Fixed temp file cleanup on cancellation: added await for task.cancel() to ensure download task fully completes before deleting temp file. This ensures file handles are closed before deletion attempt. Added error logging for failed deletions. |
+| 34.04 | Fixed rate limit input validation: changed from type='number' to type='text' with pattern='[0-9]*' and inputmode='numeric' to prevent decimal entry at input level using inline oninput handler. Added rate limit display to status bar showing current limit (unlimited or formatted speed). Made rate limit display use formatSpeed() for consistency with download speed formatting. |
 <!-- CONTEXT-END -->
 
 ---
@@ -252,6 +252,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 23: resume_all() must not call resume_download() for each download, as resume_download() bypasses the queue and concurrency limits. Instead, change paused downloads to queued status and let process_queue() enforce limits.
 - Step 24: simple_websocket library: Using ws.close(reason=1008, message='...') causes 'Invalid frame header' errors. Sending a message immediately before close also breaks the close handshake. Solution: send auth_error message type, add small delay (10ms), then call ws.close() without parameters. Client detects message type instead of close code.
 - Step 34.01: Always use os.path.abspath() on environment variable paths to ensure consistent resolution regardless of current working directory. Without this, /downloads can resolve to different locations (c:\downloads vs server\downloads) depending on where the script is run from.
+- Step 34.04: For numeric-only input fields, use type='text' with pattern='[0-9]*' and inputmode='numeric' instead of type='number'. Add inline oninput handler: this.value = this.value.replace(/[^0-9]/g, '') to immediately strip invalid characters. This prevents decimal entry without cursor jumping and provides better mobile keyboard support.
 <!-- LESSONS-END -->
 
 ---
