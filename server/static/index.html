@@ -165,6 +165,7 @@
                     <div class="form-field">
                         <label for="downloadFilename">Custom Filename (optional)</label>
                         <input type="text" id="downloadFilename" placeholder="Auto-detected from URL" oninput="onFilenameChange()">
+                        <div id="filenameConflictWarning" class="filename-conflict-warning"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-secondary" onclick="closeAddDownloadModal()">Cancel</button>

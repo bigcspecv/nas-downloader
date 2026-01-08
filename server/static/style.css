@@ -704,6 +704,22 @@ body {
     color: var(--text-muted);
 }
 
+.filename-conflict-warning {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #ffc107;
+    line-height: 1.5;
+}
+
+.filename-conflict-warning.visible {
+    display: block;
+}
+
 .input-with-select {
     display: grid;
     grid-template-columns: 1fr 120px;
@@ -939,7 +955,8 @@ body {
    ============================================================================ */
 
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-danger {
     padding: 10px 20px;
     border: none;
     border-radius: 8px;
@@ -973,7 +990,7 @@ body {
 .btn-danger {
     background: transparent;
     color: var(--danger);
-    border: 1px solid var(--danger);
+    border: 1px solid var(--danger) !important;
 }
 
 .btn-danger:hover {
@@ -984,7 +1001,7 @@ body {
 .modal-footer .btn-danger {
     background: var(--danger);
     color: white;
-    border: none;
+    border: none !important;
 }
 
 .modal-footer .btn-danger:hover {

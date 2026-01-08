@@ -182,9 +182,8 @@ class Download:
                     # Rename temp file to final filename
                     final_file_path = self.get_file_path()
                     if os.path.exists(temp_file_path):
-                        # Remove final file if it exists (shouldn't normally happen)
-                        if os.path.exists(final_file_path):
-                            os.remove(final_file_path)
+                        # Rename temp file to final filename
+                        # (filename is already unique from _get_unique_filename, so no conflict)
                         os.rename(temp_file_path, final_file_path)
 
                     self.update_db()
@@ -384,13 +383,90 @@ class DownloadManager:
             self.last_rate_limit_time = time.time()
             self.bytes_this_second = 0
 
-    async def add_download(self, url: str, folder: str, filename: Optional[str] = None) -> str:
-        """Add new download to queue"""
+    def check_filename_conflict(self, folder: str, filename: str) -> str:
+        """Check if filename conflicts and return unique alternative
+
+        Args:
+            folder: Folder path relative to download_path
+            filename: Desired filename
+
+        Returns:
+            Unique filename (same as input if no conflict, or modified with (1), (2), etc.)
+        """
+        return self._get_unique_filename(folder, filename)
+
+    def _get_unique_filename(self, folder: str, filename: str) -> str:
+        """Generate unique filename by appending (1), (2), etc. if file exists
+
+        Args:
+            folder: Folder path relative to download_path
+            filename: Desired filename
+
+        Returns:
+            Unique filename that doesn't conflict with existing files
+        """
+        folder_path = os.path.join(self.download_path, folder)
+
+        # Split filename into name and extension
+        if '.' in filename:
+            parts = filename.rsplit('.', 1)
+            name = parts[0]
+            ext = '.' + parts[1]
+        else:
+            name = filename
+            ext = ''
+
+        # Check if original filename is available
+        test_filename = filename
+        counter = 1
+
+        while True:
+            final_path = os.path.join(folder_path, test_filename)
+            temp_path = final_path + '.ndownload'
+
+            # Check if either final file or temp file exists
+            if not os.path.exists(final_path) and not os.path.exists(temp_path):
+                return test_filename
+
+            # Generate next candidate filename
+            test_filename = f"{name} ({counter}){ext}"
+            counter += 1
+
+    async def add_download(self, url: str, folder: str, filename: Optional[str] = None, overwrite: bool = False) -> str:
+        """Add new download to queue
+
+        Args:
+            url: Download URL
+            folder: Folder path relative to download_path
+            filename: Desired filename (optional)
+            overwrite: If True, delete existing file with same name. If False, auto-rename.
+
+        Returns:
+            Download ID
+        """
         # Generate filename if not provided
         if filename is None:
             filename = url.split('/')[-1].split('?')[0]
             if not filename:
                 filename = 'download'
+
+        # Ensure folder exists
+        folder_path = os.path.join(self.download_path, folder)
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Handle overwrite or unique filename
+        if overwrite:
+            # Delete existing files if overwrite is requested
+            final_path = os.path.join(folder_path, filename)
+            temp_path = final_path + '.ndownload'
+
+            if os.path.exists(final_path):
+                os.remove(final_path)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        else:
+            # Get unique filename to avoid overwriting existing files
+            filename = self._get_unique_filename(folder, filename)
 
         # Generate download ID
         download_id = str(uuid.uuid4())

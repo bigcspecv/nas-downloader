@@ -188,10 +188,13 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 33. Implement filename parsing in the webui when entering a url (strip urlenc values, etc.)
 - [ ] 34. Fix bugs:
    - [x] 34.01 There are two temp files being created when a user starts a download. One in the /server/downloads directory and one in the user selected downloads directory. We need the temporary download file to exist only in the user selected download directory.
-   - [ ] 34.02 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
-   - [ ] 34.03 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
-   - [ ] 34.04 There are downloads in the DB that are not showing up in the UI
-
+   - [x] 34.02 When the user tries to download a file that has the same name as a file in the target directory, we need to append incremental numbers to the file name rather than arbitrarily overwriting the file. for example, if file.iso exists in the download directory and the user downloads a new file.iso we should change the name to file (1).iso. if file.iso and file (1).iso exist then we should name the file: file (2).iso. If file (1).iso exists and the user tries to donwload a file named file (1).iso then we should name the file file (1) (1).iso.
+   - [ ] 34.03 When the user cancels an in progress download the temp file in the user selected downloads directory reamins in place
+   - [ ] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
+   - [ ] 34.05 There are downloads in the DB that are not showing up in the UI
+   - [ ] 34.06 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
+   - [ ] 34.07 Update the pause button for individual downloads to show "Queued" when the download is queued.
+ 
 ### Phase 9: Testing & Edge Cases
 - [ ] 35. Test network errors (timeout, connection drop, DNS failure)
 - [ ] 36. Test server restart (downloads resume correctly, state preserved)
@@ -226,9 +229,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 30-32 | Implemented in-progress file extension system: downloads now write to .ndownload temp files during transfer, automatically rename to final filename on completion, and properly handle pause/resume with temp files. Updated cancel() to delete correct file based on completion status. Fixed download-row folder icon: replaced emoji with themed folder icon and aligned with flexbox. |
 | 33 | Implemented URL filename parsing in WebUI: auto-extracts filename from URL input, decodes URL-encoded characters (%20 -> space), strips query parameters and fragments. Added onUrlChange() to auto-fill filename field and onFilenameChange() to track manual edits (prevents overwriting user input). Resets userModified flag on modal close. |
 | 34.01 | Fixed duplicate temp file issue: made DOWNLOAD_PATH and DATA_PATH always resolve to absolute paths using os.path.abspath(). This prevents path resolution differences based on current working directory. Deleted obsolete server/downloads directory that was created from previous relative path issues. |
+| 34.02 | Implemented intelligent filename conflict handling: added /api/downloads/check-filename endpoint and check_filename_conflict() method in DownloadManager. Auto-filled filenames (from URLs) silently rename to unique names (file (1).ext) when conflicts detected. User-typed filenames show yellow warning for conflicts. Overwrite dialog appears on submit with conflicting filename - if confirmed, deletes existing file via overwrite=true flag. Checks both final and .ndownload temp files. Re-checks conflicts when folder changes. Fixed .btn-danger styling to have proper padding/border-radius. |
 <!-- CONTEXT-END -->
 
 ---
@@ -272,6 +275,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | Use auth_error message type instead of WebSocket close codes for authentication failures | simple_websocket library has issues with custom close codes and sending messages before close. Message-based approach is more reliable and allows sending detailed error information before closing connection | 24 |
 | Folder browser with breadcrumb navigation and scroll indicator | Provides Save As dialog-like UX with compact breadcrumb showing full path, auto-scrolls to show current location, animated scroll indicator (.../) reveals hidden path segments, uses existing /api/folders endpoints for navigation and creation | 25-29 |
 | Use .ndownload extension for in-progress downloads | Clearly identifies temp files as belonging to nas-downloader, prevents conflicts with browser .download or .crdownload files, and provides visual indication that file is incomplete | 30-32 |
+| Smart filename conflict handling with auto-rename for auto-fills | Auto-filled filenames (from URL) silently rename to unique names when conflicts detected - user sees final name in textbox. User-typed filenames show yellow warning but keep original name. Overwrite dialog appears on submit if conflict exists, allowing intentional overwrites. This prevents accidental overwrites for auto-fills while giving users full control when they manually specify names. | 34.02 |
 <!-- DECISIONS-END -->
 
 ---

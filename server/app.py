@@ -356,6 +356,52 @@ def get_downloads():
         return jsonify({'error': f'Failed to get downloads: {str(e)}'}), 500
 
 
+@app.route('/api/downloads/check-filename', methods=['POST'])
+@require_auth
+def check_filename():
+    """Check if filename exists and return unique alternative if needed"""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body must be valid JSON'}), 400
+
+    filename = data.get('filename')
+    folder = data.get('folder', '')
+
+    if not filename:
+        return jsonify({'error': 'Missing filename in request body'}), 400
+
+    if not isinstance(filename, str):
+        return jsonify({'error': 'Filename must be a string'}), 400
+
+    # Check for path separators in filename
+    if '/' in filename or '\\' in filename:
+        return jsonify({'error': 'Filename cannot contain path separators'}), 400
+
+    if filename.strip() == '':
+        return jsonify({'error': 'Filename cannot be empty'}), 400
+
+    # Validate folder path if provided
+    if folder:
+        if not isinstance(folder, str):
+            return jsonify({'error': 'Folder path must be a string'}), 400
+        target_path = validate_path(folder)
+        if target_path is None:
+            return jsonify({'error': 'Invalid folder path - path traversal detected'}), 400
+
+    try:
+        # Check if file exists
+        unique_filename = download_manager.check_filename_conflict(folder, filename)
+
+        return jsonify({
+            'original_filename': filename,
+            'suggested_filename': unique_filename,
+            'conflict': unique_filename != filename
+        }), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to check filename: {str(e)}'}), 500
+
+
 @app.route('/api/downloads', methods=['POST'])
 @require_auth
 def create_download():
@@ -371,6 +417,7 @@ def create_download():
     url = data['url']
     folder = data.get('folder', '')
     filename = data.get('filename')
+    overwrite = data.get('overwrite', False)
 
     # Validate URL format
     if not url or not isinstance(url, str) or url.strip() == '':
@@ -399,7 +446,7 @@ def create_download():
             return jsonify({'error': 'Filename cannot be empty'}), 400
 
     try:
-        download_id = run_async(download_manager.add_download(url, folder, filename))
+        download_id = run_async(download_manager.add_download(url, folder, filename, overwrite))
 
         # Get the created download info
         downloads = run_async(download_manager.get_downloads())

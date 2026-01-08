@@ -775,6 +775,9 @@ function closeAddDownloadModal() {
     // Reset userModified flag for filename field
     delete filenameField.dataset.userModified;
 
+    // Clear any filename conflict warnings
+    hideFilenameWarning();
+
     // Reset folder browser to root
     currentFolderPath = '';
 }
@@ -871,6 +874,34 @@ function parseFilenameFromUrl(url) {
     }
 }
 
+let filenameCheckTimeout = null;
+
+async function checkFilenameConflict(filename, folder) {
+    if (!filename) {
+        return null;
+    }
+
+    try {
+        const result = await apiCall('/downloads/check-filename', 'POST', { filename, folder });
+        return result;
+    } catch (error) {
+        console.error('Failed to check filename conflict:', error);
+        return null;
+    }
+}
+
+function showFilenameWarning(message) {
+    const warning = document.getElementById('filenameConflictWarning');
+    warning.textContent = message;
+    warning.classList.add('visible');
+}
+
+function hideFilenameWarning() {
+    const warning = document.getElementById('filenameConflictWarning');
+    warning.textContent = '';
+    warning.classList.remove('visible');
+}
+
 function onUrlChange() {
     const urlField = document.getElementById('downloadUrl');
     const filenameField = document.getElementById('downloadFilename');
@@ -882,18 +913,50 @@ function onUrlChange() {
         const parsedFilename = parseFilenameFromUrl(url);
         filenameField.value = parsedFilename;
         filenameField.placeholder = parsedFilename ? parsedFilename : 'Auto-detected from URL';
+
+        // Check for filename conflicts after auto-filling (not a user edit)
+        onFilenameChange(false);
     }
 }
 
-function onFilenameChange() {
+function onFilenameChange(isUserEdit = true) {
     const filenameField = document.getElementById('downloadFilename');
+    const folderField = document.getElementById('downloadFolder');
 
-    // Mark that user has manually edited the filename
-    if (filenameField.value.trim()) {
+    // Mark that user has manually edited the filename (only if this was a user edit)
+    if (isUserEdit && filenameField.value.trim()) {
         filenameField.dataset.userModified = 'true';
-    } else {
+    } else if (!filenameField.value.trim()) {
         delete filenameField.dataset.userModified;
+        hideFilenameWarning();
+        return;
     }
+
+    // Debounce the filename check
+    if (filenameCheckTimeout) {
+        clearTimeout(filenameCheckTimeout);
+    }
+
+    filenameCheckTimeout = setTimeout(async () => {
+        const filename = filenameField.value.trim();
+        const folder = folderField.value || '';
+        const isUserModified = filenameField.dataset.userModified === 'true';
+
+        const result = await checkFilenameConflict(filename, folder);
+
+        if (result && result.conflict) {
+            if (isUserModified) {
+                // User manually typed a conflicting name - show warning only
+                showFilenameWarning(`⚠ A file named "${result.original_filename}" already exists.`);
+            } else {
+                // Auto-filled from URL - silently rename to unique filename
+                filenameField.value = result.suggested_filename;
+                hideFilenameWarning();
+            }
+        } else {
+            hideFilenameWarning();
+        }
+    }, 500);
 }
 
 async function addDownload(event) {
@@ -910,6 +973,28 @@ async function addDownload(event) {
     try {
         const body = { url, folder };
         if (filename) body.filename = filename;
+
+        // Check for filename conflicts if user specified a filename
+        if (filename) {
+            const conflictCheck = await checkFilenameConflict(filename, folder);
+
+            if (conflictCheck && conflictCheck.conflict) {
+                // Show confirmation dialog
+                const confirmed = await showConfirm(
+                    `A file named "${filename}" already exists in this folder. Do you want to overwrite it?`,
+                    'File Already Exists',
+                    true  // danger
+                );
+
+                if (!confirmed) {
+                    // User chose to cancel, stay on the form
+                    return;
+                }
+
+                // User confirmed, set overwrite flag
+                body.overwrite = true;
+            }
+        }
 
         await apiCall('/downloads', 'POST', body);
 
@@ -995,6 +1080,12 @@ async function navigateToFolder(path) {
 
         // Update hidden input
         hiddenInput.value = path;
+
+        // Re-check filename conflicts when folder changes (not a user edit)
+        const filenameField = document.getElementById('downloadFilename');
+        if (filenameField.value.trim()) {
+            onFilenameChange(false);
+        }
 
         // Render folder list
         renderFolderList(data.folders, path);
