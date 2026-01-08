@@ -30,6 +30,42 @@ body {
 }
 
 /* ============================================================================
+   Icons
+   ============================================================================ */
+
+.icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+
+.icon-sm {
+    width: 14px;
+    height: 14px;
+}
+
+.icon-md {
+    width: 18px;
+    height: 18px;
+}
+
+.icon-lg {
+    width: 64px;
+    height: 64px;
+}
+
+/* Special icon styles */
+.status-item .icon {
+    stroke: var(--accent-primary);
+}
+
+.empty-state .icon {
+    stroke: url(#accent-gradient);
+}
+
+/* ============================================================================
    App Container & Layout
    ============================================================================ */
 
@@ -123,10 +159,6 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-secondary);
-}
-
-.nav-item svg {
-    flex-shrink: 0;
 }
 
 .nav-item span:nth-child(2) {
@@ -274,9 +306,8 @@ body {
     background: var(--bg-primary);
 }
 
-.search-box svg {
+.search-box .icon {
     color: var(--text-muted);
-    flex-shrink: 0;
 }
 
 .search-box input {
@@ -489,7 +520,7 @@ body {
     color: var(--text-muted);
 }
 
-.empty-state svg {
+.empty-state .icon {
     margin-bottom: 20px;
     opacity: 0.5;
 }
@@ -702,6 +733,26 @@ body {
 
 .dialog-input-container {
     display: none;
+}
+
+.dialog-checkbox-container {
+    display: none;
+    margin-top: 16px;
+}
+
+.dialog-checkbox-container label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.dialog-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
 /* ============================================================================

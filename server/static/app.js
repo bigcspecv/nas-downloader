@@ -32,6 +32,9 @@ function showDialog(options) {
         const message = document.getElementById('dialogMessage');
         const inputContainer = document.getElementById('dialogInputContainer');
         const input = document.getElementById('dialogInput');
+        const checkboxContainer = document.getElementById('dialogCheckboxContainer');
+        const checkbox = document.getElementById('dialogCheckbox');
+        const checkboxLabel = document.getElementById('dialogCheckboxLabel');
         const cancelBtn = document.getElementById('dialogCancelBtn');
         const confirmBtn = document.getElementById('dialogConfirmBtn');
 
@@ -54,6 +57,15 @@ function showDialog(options) {
             inputContainer.style.display = 'none';
             cancelBtn.style.display = 'none';
             confirmBtn.textContent = 'OK';
+        }
+
+        // Handle optional checkbox
+        if (options.checkbox) {
+            checkboxContainer.style.display = 'block';
+            checkboxLabel.textContent = options.checkbox.label || '';
+            checkbox.checked = options.checkbox.defaultChecked || false;
+        } else {
+            checkboxContainer.style.display = 'none';
         }
 
         // Add danger class if needed
@@ -97,6 +109,8 @@ function showDialog(options) {
 function confirmDialog() {
     const inputContainer = document.getElementById('dialogInputContainer');
     const input = document.getElementById('dialogInput');
+    const checkboxContainer = document.getElementById('dialogCheckboxContainer');
+    const checkbox = document.getElementById('dialogCheckbox');
 
     if (inputContainer.style.display === 'block') {
         // Prompt mode - return input value
@@ -104,9 +118,13 @@ function confirmDialog() {
             dialogResolve(input.value);
         }
     } else {
-        // Confirm/Alert mode - return true
+        // Confirm/Alert mode - return true or object with checkbox state
         if (dialogResolve) {
-            dialogResolve(true);
+            if (checkboxContainer.style.display === 'block') {
+                dialogResolve({ confirmed: true, checkboxValue: checkbox.checked });
+            } else {
+                dialogResolve(true);
+            }
         }
     }
 
@@ -116,6 +134,7 @@ function confirmDialog() {
 function closeDialog() {
     const modal = document.getElementById('dialogModal');
     const input = document.getElementById('dialogInput');
+    const checkboxContainer = document.getElementById('dialogCheckboxContainer');
 
     modal.classList.remove('active');
 
@@ -127,6 +146,9 @@ function closeDialog() {
         if (inputContainer.style.display === 'block') {
             // Prompt mode - return null on cancel
             dialogResolve(null);
+        } else if (checkboxContainer.style.display === 'block') {
+            // Confirm with checkbox mode - return object with confirmed: false
+            dialogResolve({ confirmed: false, checkboxValue: false });
         } else {
             // Confirm mode - return false on cancel
             dialogResolve(false);
@@ -430,16 +452,7 @@ function renderDownloads() {
     if (filtered.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <circle cx="32" cy="32" r="28" stroke="url(#grad2)" stroke-width="2"/>
-                    <path d="M32 18v20m0 0l-7-7m7 7l7-7" stroke="url(#grad2)" stroke-width="2" stroke-linecap="round"/>
-                    <defs>
-                        <linearGradient id="grad2" x1="0" y1="0" x2="64" y2="64">
-                            <stop offset="0%" stop-color="#14b8a6"/>
-                            <stop offset="100%" stop-color="#0891b2"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
+                <svg class="icon icon-lg"><use href="/static/images/icons.svg#icon-download"></use></svg>
                 <p>No downloads ${currentFilter !== 'all' ? 'in this category' : 'yet'}</p>
                 <p class="hint">Click "New Download" to get started</p>
             </div>
@@ -498,9 +511,9 @@ function renderDownloads() {
                             `<button class="btn-icon" onclick="pauseDownload('${download.id}')">Pause</button>` : ''}
                         ${download.status === 'paused' ?
                             `<button class="btn-icon" onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
-                        ${download.status !== 'completed' ?
-                            `<button class="btn-icon btn-danger" onclick="cancelDownload('${download.id}')">Cancel</button>` :
-                            `<button class="btn-icon btn-danger" onclick="removeDownload('${download.id}')">Remove</button>`}
+                        <button class="btn-icon btn-danger" onclick="deleteDownload('${download.id}')">
+                            <svg class="icon"><use href="/static/images/icons.svg#icon-trash"></use></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -508,6 +521,7 @@ function renderDownloads() {
     }).join('');
 
     updateSelectAllCheckbox();
+    updateDeleteButton();
 }
 
 function getProgressClass(status) {
@@ -561,6 +575,13 @@ function updateSelectAllCheckbox() {
     }
 }
 
+function updateDeleteButton() {
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    if (deleteBtn) {
+        deleteBtn.disabled = selectedDownloads.size === 0;
+    }
+}
+
 // ============================================================================
 // Status Bar
 // ============================================================================
@@ -602,7 +623,7 @@ async function deleteSelected() {
     const confirmed = await showConfirm(
         `Are you sure you want to delete ${selectedDownloads.size} selected download(s)?`,
         'Delete Downloads',
-        true
+        false
     );
 
     if (!confirmed) {
@@ -626,16 +647,12 @@ function updatePauseButton() {
 
     if (globalPaused) {
         button.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M5 4l9 5-9 5V4z" fill="currentColor"/>
-            </svg>
+            <svg class="icon"><use href="/static/images/icons.svg#icon-play"></use></svg>
             Resume All
         `;
     } else {
         button.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M6 5v8M12 5v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+            <svg class="icon"><use href="/static/images/icons.svg#icon-pause"></use></svg>
             Pause All
         `;
     }
@@ -779,37 +796,40 @@ async function resumeDownload(id) {
     }
 }
 
-async function cancelDownload(id) {
-    const confirmed = await showConfirm(
-        'Are you sure you want to cancel this download and delete the partial file?',
-        'Cancel Download',
-        true
-    );
+async function deleteDownload(id) {
+    const download = downloads.find(d => d.id === id);
+    let deleteFile = false;
 
-    if (!confirmed) return;
+    // For completed downloads, offer option to delete the file
+    if (download && download.status === 'completed') {
+        const result = await showDialog({
+            type: 'confirm',
+            title: 'Delete Download',
+            message: 'Are you sure you want to delete this download?',
+            checkbox: {
+                label: 'Also delete the downloaded file',
+                defaultChecked: false
+            }
+        });
 
-    try {
-        await apiCall(`/downloads/${id}`, 'DELETE');
-        showNotification('success', 'Download Cancelled', '');
-    } catch (error) {
-        showNotification('error', 'Failed to Cancel', error.message);
+        if (!result.confirmed) return;
+        deleteFile = result.checkboxValue;
+    } else {
+        const confirmed = await showConfirm(
+            'Are you sure you want to delete this download?',
+            'Delete Download',
+            false
+        );
+
+        if (!confirmed) return;
     }
-}
-
-async function removeDownload(id) {
-    const confirmed = await showConfirm(
-        'Are you sure you want to remove this download from the list?',
-        'Remove Download',
-        false
-    );
-
-    if (!confirmed) return;
 
     try {
-        await apiCall(`/downloads/${id}`, 'DELETE');
-        showNotification('success', 'Download Removed', '');
+        const endpoint = deleteFile ? `/downloads/${id}?delete_file=true` : `/downloads/${id}`;
+        await apiCall(endpoint, 'DELETE');
+        showNotification('success', 'Download Deleted', '');
     } catch (error) {
-        showNotification('error', 'Failed to Remove', error.message);
+        showNotification('error', 'Failed to Delete', error.message);
     }
 }
 
