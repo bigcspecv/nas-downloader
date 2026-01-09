@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAS Download Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f26;
+            --bg-tertiary: #242a33;
+            --bg-hover: #2a3140;
+            --border-color: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #14b8a6;
+            --accent-secondary: #0891b2;
+            --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+
+            --text-xs: 11px;
+            --text-sm: 12px;
+            --text-base: 14px;
+
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            width: 380px;
+            max-height: 600px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-3);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .brand-name {
+            font-size: var(--text-base);
+            font-weight: 600;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+        }
+
+        .add-download {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            transition: all var(--transition-base);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        button {
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-icon {
+            padding: var(--space-1) var(--space-2);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+        }
+
+        .btn-icon:hover {
+            color: var(--text-primary);
+        }
+
+        .downloads-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .download-item {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            transition: background-color var(--transition-base);
+        }
+
+        .download-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .download-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-2);
+        }
+
+        .download-filename {
+            font-size: var(--text-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 250px;
+        }
+
+        .download-controls {
+            display: flex;
+            gap: var(--space-1);
+        }
+
+        .download-progress {
+            margin-bottom: var(--space-2);
+        }
+
+        .progress-bar-bg {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            transition: width var(--transition-base);
+        }
+
+        .download-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .download-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: 2px var(--space-2);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+        }
+
+        .download-status.downloading {
+            background: rgba(20, 184, 166, 0.1);
+            color: var(--accent-primary);
+        }
+
+        .download-status.completed {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .download-status.paused {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .download-status.failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            padding: var(--space-8);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+        }
+
+        .footer {
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .footer button {
+            flex: 1;
+            font-size: var(--text-xs);
+        }
+
+        .not-configured {
+            padding: var(--space-6);
+            text-align: center;
+        }
+
+        .not-configured-icon {
+            font-size: 48px;
+            margin-bottom: var(--space-4);
+        }
+
+        .not-configured-title {
+            font-size: var(--text-base);
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+        }
+
+        .not-configured-text {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-4);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Not configured state -->
+        <div id="notConfigured" class="not-configured" style="display: none;">
+            <div class="not-configured-icon">⚙️</div>
+            <div class="not-configured-title">Setup Required</div>
+            <div class="not-configured-text">Configure your server URL and API key to get started</div>
+            <button class="btn-primary" id="openSettingsBtn">Open Settings</button>
+        </div>
+
+        <!-- Main UI -->
+        <div id="mainUI" style="display: none;">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-top">
+                    <div class="brand">
+                        <span class="brand-name">NAS Download Manager</span>
+                    </div>
+                    <div class="connection-status">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Disconnected</span>
+                    </div>
+                </div>
+
+                <div class="add-download">
+                    <input
+                        type="text"
+                        id="downloadUrl"
+                        placeholder="Enter download URL..."
+                    >
+                    <button class="btn-primary" id="addDownloadBtn">Add</button>
+                </div>
+            </div>
+
+            <!-- Downloads List -->
+            <div class="downloads-list" id="downloadsList">
+                <div class="empty-state">No downloads</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <button class="btn-secondary" id="openWebUIBtn">Open Web UI</button>
+                <button class="btn-secondary" id="settingsBtn">Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

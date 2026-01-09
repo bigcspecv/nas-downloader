@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Extension Icons</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0f1419;
+            color: #e2e8f0;
+        }
+        h1 {
+            color: #14b8a6;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+            padding: 20px;
+            background: #1a1f26;
+            border-radius: 8px;
+        }
+        .icon-container {
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            image-rendering: crisp-edges;
+        }
+        button {
+            background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .instructions {
+            background: #242a33;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        code {
+            background: #1a1f26;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #14b8a6;
+        }
+    </style>
+</head>
+<body>
+    <h1>NAS Download Manager - Icon Generator</h1>
+    <p>Click the buttons below to download extension icons (using your logo).</p>
+
+    <div class="preview">
+        <div class="icon-container">
+            <canvas id="icon16" width="16" height="16"></canvas>
+            <div>16x16</div>
+            <button onclick="downloadIcon('icon16', 16)">Download</button>
+        </div>
+        <div class="icon-container">
+            <canvas id="icon48" width="48" height="48"></canvas>
+            <div>48x48</div>
+            <button onclick="downloadIcon('icon48', 48)">Download</button>
+        </div>
+        <div class="icon-container">
+            <canvas id="icon128" width="128" height="128"></canvas>
+            <div>128x128</div>
+            <button onclick="downloadIcon('icon128', 128)">Download</button>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Click each download button above to save the icon files</li>
+            <li>Save them in the <code>extension/icons/</code> directory as:
+                <ul>
+                    <li><code>icon16.png</code></li>
+                    <li><code>icon48.png</code></li>
+                    <li><code>icon128.png</code></li>
+                </ul>
+            </li>
+            <li>These icons are generated from your logo with a gradient background</li>
+        </ol>
+    </div>
+
+    <script>
+        // Your logo SVG
+        const logoSVG = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+              <!-- NAS chassis -->
+              <rect x="48" y="44" width="160" height="168" rx="18" stroke="white" stroke-width="12"/>
+              <path d="M48 92h160" stroke="white" stroke-width="12" stroke-linecap="round"/>
+              <path d="M48 140h160" stroke="white" stroke-width="12" stroke-linecap="round"/>
+
+              <!-- Drive LEDs -->
+              <circle cx="72" cy="72" r="6" fill="white"/>
+              <circle cx="96" cy="72" r="6" fill="white"/>
+              <circle cx="72" cy="120" r="6" fill="white"/>
+              <circle cx="96" cy="120" r="6" fill="white"/>
+
+              <!-- Download arrow -->
+              <path d="M128 116v62" stroke="white" stroke-width="14" stroke-linecap="round"/>
+              <path d="M100 154l28 28 28-28" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+
+        // Draw icon on canvas
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#14b8a6');
+            gradient.addColorStop(1, '#0891b2');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Convert SVG to image
+            const img = new Image();
+            const svgBlob = new Blob([logoSVG], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function() {
+                // Add padding
+                const padding = size * 0.1;
+                const logoSize = size - (padding * 2);
+
+                // Draw logo centered with padding
+                ctx.drawImage(img, padding, padding, logoSize, logoSize);
+                URL.revokeObjectURL(url);
+            };
+
+            img.src = url;
+        }
+
+        // Download icon as PNG
+        function downloadIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon${size}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Draw all icons on page load
+        setTimeout(() => {
+            drawIcon('icon16', 16);
+            drawIcon('icon48', 48);
+            drawIcon('icon128', 128);
+        }, 100);
+    </script>
+</body>
+</html>
