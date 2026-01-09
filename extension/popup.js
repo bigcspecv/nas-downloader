@@ -3,6 +3,7 @@ let downloads = [];
 let serverUrl = null;
 let apiKey = null;
 let isConnected = false;
+let globalPaused = false;
 let downloadIds = new Set();
 let lastProgress = {}; // Track last rendered progress percentages
 
@@ -25,6 +26,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === 'downloads_updated') {
             downloads = message.downloads || [];
+            if (message.globalPaused !== undefined) {
+                globalPaused = message.globalPaused;
+                updatePauseAllButton();
+            }
             renderDownloads();
         } else if (message.type === 'connection_status_changed') {
             updateConnectionStatus();
@@ -63,6 +68,12 @@ function setupEventListeners() {
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
         settingsBtn.addEventListener('click', openOptions);
+    }
+
+    // Pause all button
+    const pauseAllBtn = document.getElementById('pauseAllBtn');
+    if (pauseAllBtn) {
+        pauseAllBtn.addEventListener('click', togglePauseAll);
     }
 
     // Intercept toggle
@@ -185,6 +196,10 @@ async function loadDownloads() {
         const response = await chrome.runtime.sendMessage({ type: 'get_downloads' });
         console.log('Background response:', response);
         downloads = response && response.downloads ? response.downloads : [];
+        if (response && response.globalPaused !== undefined) {
+            globalPaused = response.globalPaused;
+            updatePauseAllButton();
+        }
         console.log('Downloads array:', downloads);
         renderDownloads();
     } catch (error) {
@@ -195,6 +210,9 @@ async function loadDownloads() {
 // Render downloads list
 function renderDownloads() {
     const container = document.getElementById('downloadsList');
+
+    // Update global speed display
+    updateGlobalSpeed();
 
     if (downloads.length === 0) {
         downloadIds.clear();
@@ -757,4 +775,60 @@ async function confirmFolderSelection() {
         console.error('Failed to add download:', error);
         alert('Failed to add download');
     }
+}
+
+// ============ Global Pause/Resume Functions ============
+
+// Toggle pause all downloads
+async function togglePauseAll() {
+    try {
+        if (globalPaused) {
+            await chrome.runtime.sendMessage({ type: 'resume_all_downloads' });
+        } else {
+            await chrome.runtime.sendMessage({ type: 'pause_all_downloads' });
+        }
+    } catch (error) {
+        console.error('Failed to toggle pause all:', error);
+    }
+}
+
+// Update the pause all button appearance
+function updatePauseAllButton() {
+    const pauseAllBtn = document.getElementById('pauseAllBtn');
+    const pauseAllIcon = document.getElementById('pauseAllIcon');
+    const playAllIcon = document.getElementById('playAllIcon');
+
+    if (!pauseAllBtn || !pauseAllIcon || !playAllIcon) {
+        return;
+    }
+
+    if (globalPaused) {
+        // Show play icon (to resume)
+        pauseAllIcon.style.display = 'none';
+        playAllIcon.style.display = 'block';
+        pauseAllBtn.classList.add('paused');
+        pauseAllBtn.title = 'Resume All Downloads';
+    } else {
+        // Show pause icon (to pause)
+        pauseAllIcon.style.display = 'block';
+        playAllIcon.style.display = 'none';
+        pauseAllBtn.classList.remove('paused');
+        pauseAllBtn.title = 'Pause All Downloads';
+    }
+}
+
+// Update global download speed display
+function updateGlobalSpeed() {
+    const globalSpeedValue = document.getElementById('globalSpeedValue');
+    if (!globalSpeedValue) return;
+
+    // Sum up speed from all downloading items
+    let totalSpeed = 0;
+    downloads.forEach(download => {
+        if (download.status === 'downloading' && download.progress && download.progress.speed_bps) {
+            totalSpeed += download.progress.speed_bps;
+        }
+    });
+
+    globalSpeedValue.textContent = formatSpeed(totalSpeed);
 }

@@ -5,6 +5,7 @@ let isConnected = false;
 let serverUrl = null;
 let apiKey = null;
 let downloads = [];
+let globalPaused = false;
 let interceptEnabled = true; // Default to enabled
 
 // Initialize on install/startup
@@ -48,17 +49,28 @@ chrome.downloads.onCreated.addListener((downloadItem) => {
 // Create context menu for right-click download
 function createContextMenu() {
     chrome.contextMenus.removeAll(() => {
-        chrome.contextMenus.create({
-            id: 'nas-download',
-            title: 'NAS Download',
-            contexts: ['link', 'video', 'audio', 'image']
-        });
+        // Always show "NAS Download to" for folder selection
         chrome.contextMenus.create({
             id: 'nas-download-to',
-            title: 'NAS Download to',
+            title: 'NAS Download to...',
             contexts: ['link', 'video', 'audio', 'image']
         });
+
+        // Only show "NAS Download" when intercept is disabled
+        // (when intercept is enabled, all downloads go to NAS automatically)
+        if (!interceptEnabled) {
+            chrome.contextMenus.create({
+                id: 'nas-download',
+                title: 'NAS Download',
+                contexts: ['link', 'video', 'audio', 'image']
+            });
+        }
     });
+}
+
+// Update context menu when intercept setting changes
+function updateContextMenu() {
+    createContextMenu();
 }
 
 // Handle context menu clicks
@@ -109,6 +121,8 @@ async function loadInterceptSetting() {
         // Default to true if not set
         interceptEnabled = result.interceptDownloads !== false;
         console.log('Intercept enabled:', interceptEnabled);
+        // Update context menu based on setting
+        updateContextMenu();
     } catch (error) {
         console.error('Failed to load intercept setting:', error);
         interceptEnabled = true; // Default to enabled on error
@@ -192,12 +206,14 @@ function handleWebSocketMessage(message) {
     if (message.type === 'status') {
         // Server sends 'status' messages with downloads list
         downloads = message.downloads || [];
-        console.log('Updated downloads array:', downloads.length, 'downloads');
+        globalPaused = message.global_paused || false;
+        console.log('Updated downloads array:', downloads.length, 'downloads, globalPaused:', globalPaused);
 
         // Notify popup if it's open
         chrome.runtime.sendMessage({
             type: 'downloads_updated',
-            downloads: downloads
+            downloads: downloads,
+            globalPaused: globalPaused
         }).catch(() => {
             // Popup might not be open, ignore error
         });
@@ -317,6 +333,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Intercept setting changed
         interceptEnabled = message.enabled;
         console.log('Intercept setting updated:', interceptEnabled);
+        // Update context menu to show/hide "NAS Download" option
+        updateContextMenu();
         sendResponse({ success: true });
 
     } else if (message.type === 'get_connection_status') {
@@ -324,7 +342,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     } else if (message.type === 'get_downloads') {
         console.log('Popup requested downloads, sending:', downloads.length, 'downloads');
-        sendResponse({ downloads: downloads });
+        sendResponse({ downloads: downloads, globalPaused: globalPaused });
 
     } else if (message.type === 'add_download') {
         addDownload(message.url, message.folder);
@@ -341,6 +359,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else if (message.type === 'cancel_download') {
         cancelDownload(message.id);
         sendResponse({ success: true });
+
+    } else if (message.type === 'pause_all_downloads') {
+        pauseAllDownloads();
+        sendResponse({ success: true });
+
+    } else if (message.type === 'resume_all_downloads') {
+        resumeAllDownloads();
+        sendResponse({ success: true });
+
+    } else if (message.type === 'get_global_paused') {
+        sendResponse({ globalPaused: globalPaused });
     }
 
     return true; // Keep message channel open for async response
@@ -393,5 +422,33 @@ async function cancelDownload(id) {
         });
     } catch (error) {
         console.error('Failed to cancel download:', error);
+    }
+}
+
+// Pause all downloads
+async function pauseAllDownloads() {
+    if (!serverUrl || !apiKey) return;
+
+    try {
+        await fetch(`${serverUrl}/api/downloads/pause-all`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+    } catch (error) {
+        console.error('Failed to pause all downloads:', error);
+    }
+}
+
+// Resume all downloads
+async function resumeAllDownloads() {
+    if (!serverUrl || !apiKey) return;
+
+    try {
+        await fetch(`${serverUrl}/api/downloads/resume-all`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+    } catch (error) {
+        console.error('Failed to resume all downloads:', error);
     }
 }
