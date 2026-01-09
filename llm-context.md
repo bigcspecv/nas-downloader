@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 49 <!-- CURRENT-STEP -->
+## Current Step: 50 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -193,6 +193,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [x] 34.05 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
    - [x] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
+   - [ ] 34.07 If the user downloads a file that has the same name as an inprogress download, treate it the same way as we handle downloading files where a file with the same name exists in the download folder.
 
 ### Phase 9: UI Polish
 - [x] 35. Add loading states (spinners, skeleton screens)
@@ -220,10 +221,12 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.01.02 Download Progress not working. Always shows 0 B / 0 B
    - [x] 48.01.03 Download Pause Button not working
 - [ ] 48.02 Missing features:
-   - [ ] 48.02.01 Add ability to pause all downloads (global pause button on main popup)
-   - [ ] 48.02.02 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup)
-   - [ ] 48.02.03 Add ability to set the server's global download speed in settings on the main popup
-   - [ ] 48.02.04 Add ability to set the server's max concurrent downloads in settings on the main popup
+   - [x] 48.02.01 Add the ability to intecept download links in the browser
+   - [ ] 48.02.02 Add the ability to pick a folder to download to like we do in the web-app when someone chooses to download with the context menu.
+   - [ ] 48.02.03 Add ability to pause all downloads (global pause button on main popup)
+   - [ ] 48.02.04 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup)
+   - [ ] 48.02.05 Add ability to set the server's global download speed in settings on the main popup
+   - [ ] 48.02.06 Add ability to set the server's max concurrent downloads in settings on the main popup
 
 ### Phase 12: Download History - Core Infrastructure
 - [ ] 49. Add `load_history` setting to settings table (default '1' = enabled)
@@ -269,9 +272,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 47 | Created extension/popup.html + popup.js with compact popup UI (380px width): connection status, add download form, downloads list with progress bars and status indicators, pause/resume/cancel controls, empty/not-configured states, and links to open web UI and settings. Matches web UI design system. |
-| 48 | Created HTML-based icon generator (extension/generate-icons.html) that generates 16x16, 48x48, and 128x128 PNG icons with gradient background and download arrow symbol. Includes instructions in extension/icons/README.md for generating and installing placeholder icons. |
-| 48.01 | Fixed Chrome extension popup bugs: Added download speed display (formatSpeed function), fixed progress to access nested progress object (progress.downloaded_bytes/total_bytes instead of direct properties), fixed pause/resume buttons to use PATCH /api/downloads/id with action body instead of non-existent /pause and /resume endpoints, added 1s linear transition to progress bar for smooth animation. |
+| 48.02.01 | Added download interception to Chrome extension: Added 'downloads' permission to manifest.json, implemented chrome.downloads.onCreated listener in background.js that cancels browser downloads and sends them to server via existing addDownload() function. Updated context menu items: renamed to 'NAS Download' and added 'NAS Download to' menu item. Added intercept toggle switch in popup footer with CSS styling, popup.js handlers to save/load setting, and background.js logic to respect the setting (defaults to enabled). |
+| 48.02.01 | Added download interception to Chrome extension: Added 'downloads' permission to manifest.json, implemented chrome.downloads.onCreated listener in background.js that cancels browser downloads and sends them to server. Updated context menu items: renamed to 'NAS Download' and added 'NAS Download to'. Added intercept toggle switch in popup footer. Moved settings and web UI buttons from footer to header as icon buttons (gear for settings, grid for web UI) to save space and reduce footer clutter. |
+| 48.02.01 | Added download interception to Chrome extension: Added 'downloads' permission, implemented chrome.downloads.onCreated listener that intercepts and cancels browser downloads when enabled. Context menu items updated to 'NAS Download' and 'NAS Download to'. Added intercept toggle in popup footer. Moved settings/web UI buttons to header as Heroicons outline icons (window, cog-6-tooth). Toggle persists setting, defaults to enabled, allows normal Chrome downloads when disabled. |
 <!-- CONTEXT-END -->
 
 ---
