@@ -5,25 +5,57 @@ let isConnected = false;
 let serverUrl = null;
 let apiKey = null;
 let downloads = [];
+let interceptEnabled = true; // Default to enabled
 
 // Initialize on install/startup
 chrome.runtime.onInstalled.addListener(() => {
     console.log('NAS Download Manager extension installed');
     createContextMenu();
     loadSettingsAndConnect();
+    loadInterceptSetting();
 });
 
 chrome.runtime.onStartup.addListener(() => {
     console.log('Browser started, reconnecting...');
     loadSettingsAndConnect();
+    loadInterceptSetting();
+});
+
+// Intercept browser downloads
+chrome.downloads.onCreated.addListener((downloadItem) => {
+    console.log('Download intercepted:', downloadItem.url, 'interceptEnabled:', interceptEnabled);
+
+    // Check if interception is enabled
+    if (!interceptEnabled) {
+        console.log('Interception disabled, allowing browser download to proceed normally');
+        return; // Let browser handle download
+    }
+
+    console.log('Interception enabled, cancelling browser download and sending to server');
+
+    // Cancel the browser download immediately
+    chrome.downloads.cancel(downloadItem.id, () => {
+        // After cancelling, remove from browser's download list
+        chrome.downloads.erase({ id: downloadItem.id }, () => {
+            console.log('Browser download cancelled and removed:', downloadItem.id);
+        });
+    });
+
+    // Send to our server instead
+    addDownload(downloadItem.url);
 });
 
 // Create context menu for right-click download
 function createContextMenu() {
     chrome.contextMenus.removeAll(() => {
         chrome.contextMenus.create({
-            id: 'download-with-nas',
-            title: 'Download with NAS',
+            id: 'nas-download',
+            title: 'NAS Download',
+            contexts: ['link', 'video', 'audio', 'image']
+        });
+        chrome.contextMenus.create({
+            id: 'nas-download-to',
+            title: 'NAS Download to',
             contexts: ['link', 'video', 'audio', 'image']
         });
     });
@@ -31,7 +63,7 @@ function createContextMenu() {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'download-with-nas') {
+    if (info.menuItemId === 'nas-download' || info.menuItemId === 'nas-download-to') {
         const url = info.linkUrl || info.srcUrl;
         if (url) {
             addDownload(url);
@@ -55,6 +87,19 @@ async function loadSettingsAndConnect() {
     } catch (error) {
         console.error('Failed to load settings:', error);
         updateConnectionStatus(false);
+    }
+}
+
+// Load intercept setting
+async function loadInterceptSetting() {
+    try {
+        const result = await chrome.storage.sync.get(['interceptDownloads']);
+        // Default to true if not set
+        interceptEnabled = result.interceptDownloads !== false;
+        console.log('Intercept enabled:', interceptEnabled);
+    } catch (error) {
+        console.error('Failed to load intercept setting:', error);
+        interceptEnabled = true; // Default to enabled on error
     }
 }
 
@@ -254,6 +299,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'settings_updated') {
         // Settings changed, reconnect
         loadSettingsAndConnect();
+        sendResponse({ success: true });
+
+    } else if (message.type === 'intercept_setting_changed') {
+        // Intercept setting changed
+        interceptEnabled = message.enabled;
+        console.log('Intercept setting updated:', interceptEnabled);
         sendResponse({ success: true });
 
     } else if (message.type === 'get_connection_status') {

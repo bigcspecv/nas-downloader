@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await checkConfiguration();
     await updateConnectionStatus();
     await loadDownloads();
+    await loadInterceptSetting();
 
     // Set up event listeners
     setupEventListeners();
@@ -56,6 +57,12 @@ function setupEventListeners() {
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
         settingsBtn.addEventListener('click', openOptions);
+    }
+
+    // Intercept toggle
+    const interceptToggle = document.getElementById('interceptToggle');
+    if (interceptToggle) {
+        interceptToggle.addEventListener('change', saveInterceptSetting);
     }
 
     // Event delegation for download control buttons
@@ -431,4 +438,38 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Load intercept setting
+async function loadInterceptSetting() {
+    try {
+        const result = await chrome.storage.sync.get(['interceptDownloads']);
+        const interceptToggle = document.getElementById('interceptToggle');
+        if (interceptToggle) {
+            // Default to true if not set
+            interceptToggle.checked = result.interceptDownloads !== false;
+        }
+    } catch (error) {
+        console.error('Failed to load intercept setting:', error);
+    }
+}
+
+// Save intercept setting
+async function saveInterceptSetting() {
+    try {
+        const interceptToggle = document.getElementById('interceptToggle');
+        const enabled = interceptToggle.checked;
+
+        await chrome.storage.sync.set({ interceptDownloads: enabled });
+
+        // Notify background script
+        chrome.runtime.sendMessage({
+            type: 'intercept_setting_changed',
+            enabled: enabled
+        });
+
+        console.log('Intercept setting saved:', enabled);
+    } catch (error) {
+        console.error('Failed to save intercept setting:', error);
+    }
 }
