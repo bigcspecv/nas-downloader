@@ -686,6 +686,195 @@
         .modal-footer-row button {
             padding: var(--space-2) var(--space-4);
         }
+
+        /* Multi-select mode */
+        .download-item.selectable {
+            cursor: pointer;
+        }
+
+        .download-item.selectable:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .download-item.selected {
+            background-color: rgba(20, 184, 166, 0.1);
+        }
+
+        .download-checkbox-wrapper {
+            display: none;
+            align-items: center;
+            margin-right: var(--space-3);
+        }
+
+        .select-mode .download-checkbox-wrapper {
+            display: flex;
+        }
+
+        .download-checkbox {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+
+        .download-checkbox:hover {
+            border-color: var(--text-muted);
+        }
+
+        .download-checkbox:checked {
+            background: var(--accent-gradient);
+            border-color: var(--accent-primary);
+        }
+
+        .download-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 4px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .select-mode .download-controls {
+            display: none;
+        }
+
+        .select-count {
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .btn-delete-selected {
+            background: var(--danger);
+            color: white;
+            font-size: var(--text-xs);
+            padding: var(--space-1) var(--space-3);
+            white-space: nowrap;
+        }
+
+        .btn-delete-selected:hover {
+            background: #dc2626;
+        }
+
+        .btn-delete-selected:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .download-header-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .toolbar-spacer {
+            flex: 1;
+        }
+
+        .toolbar-select {
+            display: none;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .select-mode .toolbar-select {
+            display: flex;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 16px;
+            background: var(--border-color);
+            margin: 0 var(--space-1);
+        }
+
+        /* Consistent toolbar button sizing */
+        .toolbar .icon-button,
+        .toolbar .btn-add-download {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .toolbar .icon-button svg,
+        .toolbar .btn-add-download svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .toolbar .btn-secondary,
+        .toolbar .btn-delete-selected {
+            height: 28px;
+            font-size: var(--text-xs);
+            padding: 0 var(--space-3);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+
+        .toolbar-select-toggle {
+            border: 1px solid var(--border-color);
+        }
+
+        .toolbar-select-toggle.select-active {
+            background: rgba(20, 184, 166, 0.2);
+            border-color: var(--accent-primary);
+        }
+
+        .toolbar-select-toggle.select-active svg {
+            color: var(--accent-primary);
+        }
+
+        /* Modal URL input */
+        .modal-url-input {
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-input-label {
+            display: block;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+        }
+
+        .modal-url-input input {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+        }
+
+        .modal-url-input input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
     </style>
 </head>
 <body>
@@ -727,13 +916,30 @@
                     </div>
                 </div>
 
-                <div class="add-download">
-                    <input
-                        type="text"
-                        id="downloadUrl"
-                        placeholder="Enter download URL..."
-                    >
-                    <button class="btn-primary" id="addDownloadBtn">Add</button>
+                <!-- Toolbar: Select mode toggle on left, selection controls in middle (when active), Add button on right -->
+                <div class="toolbar">
+                    <!-- Select mode toggle button (always visible on left) -->
+                    <button class="icon-button toolbar-select-toggle" id="selectModeBtn2" title="Select Downloads">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <!-- Select mode: selection controls (shown when in select mode) -->
+                    <div class="toolbar-select">
+                        <span class="select-count" id="selectCount2">0 selected</span>
+                        <span class="toolbar-divider"></span>
+                        <button class="btn-secondary btn-select-all" id="selectAllBtn">Select All</button>
+                        <button class="btn-delete-selected" id="deleteSelectedBtn2" disabled>Delete</button>
+                    </div>
+                    <!-- Spacer to push Add button to the right -->
+                    <div class="toolbar-spacer"></div>
+                    <!-- Add Download button (always visible on right) -->
+                    <button class="btn-primary btn-add-download" id="addDownloadBtn" title="Add Download">
+                        <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                            <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -743,7 +949,7 @@
             </div>
 
             <!-- Footer -->
-            <div class="footer">
+            <div class="footer" id="footer">
                 <button class="icon-button" id="pauseAllBtn" title="Pause All Downloads">
                     <svg id="pauseAllIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M15.75 5.25v13.5m-7.5-13.5v13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -775,12 +981,16 @@
     <div id="folderPickerModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header-row">
-                <h3 class="modal-title">Select Download Folder</h3>
+                <h3 class="modal-title">Add Download</h3>
                 <button class="icon-button modal-close-btn" id="closeFolderPickerBtn">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
+            </div>
+            <div class="modal-url-input">
+                <label class="modal-input-label">Download URL</label>
+                <input type="text" id="downloadUrlInput" placeholder="Enter download URL...">
             </div>
             <div class="folder-browser">
                 <div class="folder-browser-header">

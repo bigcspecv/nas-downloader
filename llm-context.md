@@ -226,7 +226,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.02.02 Add the ability to pick a folder to download to like we do in the web-app when someone chooses to download with the context menu or manually enters a url in the extension popup
    - [x] 48.02.03 Add ability to pause all downloads (global pause button on main popup)
    - [x] 48.02.04 Style scrollbar to match look and feel to the popup
-   - [ ] 48.02.05 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup)
+   - [x] 48.02.05 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup) checkboxes need to match overall extension styling
    - [ ] 48.02.06 Add ability to set the server's global download speed in settings on the main popup by clicking on the global download speed in the footer and bringing up a modal
    - [ ] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
 
@@ -274,9 +274,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 48.02.02 | Added folder picker to Chrome extension: Created modal with breadcrumb navigation and folder list UI. Implemented folder navigation functions (navigateToFolderInPicker, renderFolderPickerBreadcrumb, renderFolderPickerList, createNewFolderInPicker). Added 'Add to...' button next to main Add button in popup that opens folder picker. Updated background.js context menu handlers so 'NAS Download to' stores URL and shows notification to open popup. Added checkPendingDownload() function to automatically open folder picker on popup open when context menu 'Download to' was used. Users can now select destination folder when adding downloads via manual URL entry or context menu. |
 | 48.02.02 | Added folder picker modal to Chrome extension popup with breadcrumb navigation and folder list UI. Simplified UX by consolidating to single Add button that opens folder picker. Modified background.js context menu handlers so 'NAS Download to' stores URL and auto-opens popup. Users can now select destination folder for manual URL entry and context menu downloads. Fixed footer positioning issue caused by duplicate CSS rules overriding flex-shrink property. |
 | 48.02.04 | Added custom scrollbar styling to Chrome extension popup. Downloads list and folder list now have matching dark-themed scrollbars with 8px width, rounded thumb with border padding trick, and hover highlight. Uses existing CSS variables (--bg-secondary, --bg-tertiary, --border-color, --text-muted) for consistency. |
+| 48.02.05 | Added multi-select delete feature to Chrome extension popup: toolbar with select mode toggle, selection count with divider, Select All button, and Delete button. Moved URL input to folder picker modal. Add Download button pinned as 32x32 square on right. All toolbar buttons standardized to 28px height. Fixed Select All by forcing full re-render to update checkbox states. |
 <!-- CONTEXT-END -->
 
 ---

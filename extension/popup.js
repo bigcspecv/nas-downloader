@@ -11,6 +11,10 @@ let lastProgress = {}; // Track last rendered progress percentages
 let currentFolderPath = '';
 let pendingDownloadUrl = null;
 
+// Multi-select state
+let selectMode = false;
+let selectedDownloads = new Set();
+
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
     await checkConfiguration();
@@ -45,19 +49,10 @@ function setupEventListeners() {
         openSettingsBtn.addEventListener('click', openOptions);
     }
 
-    // Main UI
+    // Main UI - Add Download button opens folder picker modal
     const addDownloadBtn = document.getElementById('addDownloadBtn');
     if (addDownloadBtn) {
-        addDownloadBtn.addEventListener('click', addDownloadWithFolderPicker);
-    }
-
-    const downloadUrl = document.getElementById('downloadUrl');
-    if (downloadUrl) {
-        downloadUrl.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                addDownloadWithFolderPicker();
-            }
-        });
+        addDownloadBtn.addEventListener('click', () => openFolderPicker());
     }
 
     const openWebUIBtn = document.getElementById('openWebUIBtn');
@@ -82,10 +77,53 @@ function setupEventListeners() {
         interceptToggle.addEventListener('change', saveInterceptSetting);
     }
 
-    // Event delegation for download control buttons
+    // Select mode button (in toolbar)
+    const selectModeBtn2 = document.getElementById('selectModeBtn2');
+    if (selectModeBtn2) {
+        selectModeBtn2.addEventListener('click', toggleSelectMode);
+    }
+
+    // Select all button
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', selectAllDownloads);
+    }
+
+    // Delete selected button (in toolbar)
+    const deleteSelectedBtn2 = document.getElementById('deleteSelectedBtn2');
+    if (deleteSelectedBtn2) {
+        deleteSelectedBtn2.addEventListener('click', deleteSelectedDownloads);
+    }
+
+    // Event delegation for download control buttons and selection
     const downloadsList = document.getElementById('downloadsList');
     if (downloadsList) {
         downloadsList.addEventListener('click', (e) => {
+            // Handle checkbox clicks
+            if (e.target.classList.contains('download-checkbox')) {
+                const downloadItem = e.target.closest('.download-item');
+                if (downloadItem) {
+                    const id = downloadItem.dataset.id;
+                    toggleDownloadSelection(id, e.target.checked);
+                }
+                return;
+            }
+
+            // Handle item click in select mode (click anywhere on the item to toggle)
+            if (selectMode) {
+                const downloadItem = e.target.closest('.download-item');
+                if (downloadItem && !e.target.classList.contains('download-checkbox')) {
+                    const id = downloadItem.dataset.id;
+                    const checkbox = downloadItem.querySelector('.download-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        toggleDownloadSelection(id, checkbox.checked);
+                    }
+                }
+                return;
+            }
+
+            // Handle control buttons (only when not in select mode)
             const button = e.target.closest('.btn-icon');
             if (button) {
                 const action = button.dataset.action;
@@ -121,6 +159,16 @@ function setupEventListeners() {
     const createFolderBtn = document.getElementById('createFolderBtn');
     if (createFolderBtn) {
         createFolderBtn.addEventListener('click', createNewFolderInPicker);
+    }
+
+    // Enter key in URL input submits the form
+    const downloadUrlInput = document.getElementById('downloadUrlInput');
+    if (downloadUrlInput) {
+        downloadUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmFolderSelection();
+            }
+        });
     }
 
     // Event delegation for breadcrumb clicks
@@ -214,6 +262,18 @@ function renderDownloads() {
     // Update global speed display
     updateGlobalSpeed();
 
+    // Clean up stale selections (downloads that no longer exist)
+    const currentDownloadIds = new Set(downloads.map(d => d.id));
+    for (const selectedId of selectedDownloads) {
+        if (!currentDownloadIds.has(selectedId)) {
+            selectedDownloads.delete(selectedId);
+        }
+    }
+    // Update selection count if any were removed
+    if (selectMode) {
+        updateSelectCount();
+    }
+
     if (downloads.length === 0) {
         downloadIds.clear();
         lastProgress = {};
@@ -221,16 +281,21 @@ function renderDownloads() {
         return;
     }
 
-    // Check if the structure changed (new/removed downloads or status changes)
+    // Check if the structure changed (new/removed downloads, status changes, or select mode changed)
     const currentIds = new Set(downloads.map(d => d.id));
     const currentStatuses = downloads.map(d => `${d.id}:${d.status}`).join(',');
     const previousStatuses = Array.from(container.querySelectorAll('.download-item')).map(el => {
         return `${el.dataset.id}:${el.dataset.status}`;
     }).join(',');
 
+    // Also check if select mode state matches the rendered state
+    const hasSelectableItems = container.querySelector('.download-item.selectable') !== null;
+    const selectModeChanged = selectMode !== hasSelectableItems;
+
     const structureChanged = currentIds.size !== downloadIds.size ||
                             !Array.from(currentIds).every(id => downloadIds.has(id)) ||
-                            currentStatuses !== previousStatuses;
+                            currentStatuses !== previousStatuses ||
+                            selectModeChanged;
 
     if (structureChanged) {
         // Full re-render needed - structure changed
@@ -251,11 +316,17 @@ function renderDownloads() {
             const statusClass = getStatusClass(download.status);
             const statusText = getStatusText(download.status);
 
+            const isSelected = selectedDownloads.has(download.id);
             return `
-                <div class="download-item" data-id="${download.id}" data-status="${download.status}">
+                <div class="download-item${selectMode ? ' selectable' : ''}${isSelected ? ' selected' : ''}" data-id="${download.id}" data-status="${download.status}">
                     <div class="download-header">
-                        <div class="download-filename" title="${escapeHtml(download.filename)}">
-                            ${escapeHtml(download.filename)}
+                        <div class="download-header-left">
+                            <div class="download-checkbox-wrapper">
+                                <input type="checkbox" class="download-checkbox" ${isSelected ? 'checked' : ''}>
+                            </div>
+                            <div class="download-filename" title="${escapeHtml(download.filename)}">
+                                ${escapeHtml(download.filename)}
+                            </div>
                         </div>
                         <div class="download-controls">
                             ${renderControls(download)}
@@ -376,57 +447,6 @@ function getStatusText(status) {
     return statusMap[status] || status;
 }
 
-// Add new download
-async function addDownload() {
-    const urlInput = document.getElementById('downloadUrl');
-    const url = urlInput.value.trim();
-
-    if (!url) {
-        return;
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        alert('Please enter a valid URL starting with http:// or https://');
-        return;
-    }
-
-    try {
-        await chrome.runtime.sendMessage({
-            type: 'add_download',
-            url: url
-        });
-
-        // Clear input
-        urlInput.value = '';
-
-        // Reload downloads after short delay
-        setTimeout(loadDownloads, 500);
-    } catch (error) {
-        console.error('Failed to add download:', error);
-        alert('Failed to add download');
-    }
-}
-
-// Add download with folder picker
-async function addDownloadWithFolderPicker() {
-    const urlInput = document.getElementById('downloadUrl');
-    const url = urlInput.value.trim();
-
-    if (!url) {
-        return;
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        alert('Please enter a valid URL starting with http:// or https://');
-        return;
-    }
-
-    // Clear input early
-    urlInput.value = '';
-
-    // Open folder picker
-    await openFolderPicker(url);
-}
 
 // Pause download
 async function pauseDownload(id) {
@@ -582,9 +602,19 @@ async function checkPendingDownload() {
 }
 
 // Open folder picker
-async function openFolderPicker(url) {
+async function openFolderPicker(url = '') {
     pendingDownloadUrl = url;
     currentFolderPath = '';
+
+    // Set URL in the input field
+    const urlInput = document.getElementById('downloadUrlInput');
+    if (urlInput) {
+        urlInput.value = url;
+        // Focus the input if no URL provided
+        if (!url) {
+            setTimeout(() => urlInput.focus(), 100);
+        }
+    }
 
     // Show modal
     document.getElementById('folderPickerModal').style.display = 'flex';
@@ -755,14 +785,26 @@ async function createNewFolderInPicker() {
 
 // Confirm folder selection and add download
 async function confirmFolderSelection() {
-    if (!pendingDownloadUrl) {
+    // Get URL from input field
+    const urlInput = document.getElementById('downloadUrlInput');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) {
+        alert('Please enter a download URL');
+        if (urlInput) urlInput.focus();
+        return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('Please enter a valid URL starting with http:// or https://');
+        if (urlInput) urlInput.focus();
         return;
     }
 
     try {
         await chrome.runtime.sendMessage({
             type: 'add_download',
-            url: pendingDownloadUrl,
+            url: url,
             folder: currentFolderPath
         });
 
@@ -831,4 +873,133 @@ function updateGlobalSpeed() {
     });
 
     globalSpeedValue.textContent = formatSpeed(totalSpeed);
+}
+
+// ============ Multi-Select Functions ============
+
+// Toggle select mode
+function toggleSelectMode() {
+    selectMode = !selectMode;
+
+    const mainUI = document.getElementById('mainUI');
+    const selectModeBtn = document.getElementById('selectModeBtn2');
+
+    if (selectMode) {
+        mainUI.classList.add('select-mode');
+        if (selectModeBtn) {
+            selectModeBtn.classList.add('select-active');
+            selectModeBtn.title = 'Exit Selection Mode';
+        }
+    } else {
+        mainUI.classList.remove('select-mode');
+        if (selectModeBtn) {
+            selectModeBtn.classList.remove('select-active');
+            selectModeBtn.title = 'Select Downloads';
+        }
+        // Clear selections when exiting select mode
+        selectedDownloads.clear();
+    }
+
+    // Re-render to update the UI
+    renderDownloads();
+    updateSelectCount();
+}
+
+// Toggle selection of a single download
+function toggleDownloadSelection(id, isSelected) {
+    if (isSelected) {
+        selectedDownloads.add(id);
+    } else {
+        selectedDownloads.delete(id);
+    }
+
+    // Update visual state of the item
+    const downloadItem = document.querySelector(`.download-item[data-id="${id}"]`);
+    if (downloadItem) {
+        if (isSelected) {
+            downloadItem.classList.add('selected');
+        } else {
+            downloadItem.classList.remove('selected');
+        }
+    }
+
+    updateSelectCount();
+}
+
+// Update the selection count display
+function updateSelectCount() {
+    const selectCount = document.getElementById('selectCount2');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn2');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+
+    const count = selectedDownloads.size;
+
+    if (selectCount) {
+        selectCount.textContent = `${count} selected`;
+    }
+
+    // Enable/disable delete button based on selection
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.disabled = count === 0;
+    }
+
+    // Update select all button text
+    if (selectAllBtn) {
+        const allSelected = downloads.length > 0 && count === downloads.length;
+        selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+    }
+}
+
+// Select all downloads
+function selectAllDownloads() {
+    const allSelected = downloads.length > 0 && selectedDownloads.size === downloads.length;
+
+    if (allSelected) {
+        // Deselect all
+        selectedDownloads.clear();
+    } else {
+        // Select all
+        downloads.forEach(d => selectedDownloads.add(d.id));
+    }
+
+    // Force full re-render by clearing cached IDs
+    downloadIds.clear();
+    renderDownloads();
+    updateSelectCount();
+}
+
+// Delete all selected downloads
+async function deleteSelectedDownloads() {
+    if (selectedDownloads.size === 0) {
+        return;
+    }
+
+    const count = selectedDownloads.size;
+    const confirmed = confirm(`Delete ${count} download${count > 1 ? 's' : ''}?`);
+
+    if (!confirmed) {
+        return;
+    }
+
+    // Convert to array to iterate
+    const idsToDelete = Array.from(selectedDownloads);
+
+    // Delete each selected download
+    for (const id of idsToDelete) {
+        try {
+            await chrome.runtime.sendMessage({
+                type: 'cancel_download',
+                id: id
+            });
+        } catch (error) {
+            console.error(`Failed to delete download ${id}:`, error);
+        }
+    }
+
+    // Clear selections and exit select mode
+    selectedDownloads.clear();
+    toggleSelectMode();
+
+    // Reload downloads after a short delay
+    setTimeout(loadDownloads, 500);
 }
