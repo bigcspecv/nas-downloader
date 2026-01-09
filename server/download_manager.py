@@ -277,6 +277,16 @@ class Download:
         if self.total_bytes > 0:
             percentage = (self.downloaded_bytes / self.total_bytes) * 100
 
+        # Check if download has stalled (no bytes received for 3+ seconds while downloading)
+        current_speed = self.speed_bps
+        current_eta = self.eta_seconds
+        if self.status == 'downloading' and self.last_update_time is not None:
+            time_since_last_byte = time.time() - self.last_update_time
+            if time_since_last_byte > 3.0:
+                # Download has stalled, reset speed and ETA
+                current_speed = 0
+                current_eta = 0
+
         return {
             'id': self.id,
             'url': self.url,
@@ -288,8 +298,8 @@ class Download:
                 'downloaded_bytes': self.downloaded_bytes,
                 'total_bytes': self.total_bytes,
                 'percentage': round(percentage, 2),
-                'speed_bps': int(self.speed_bps),
-                'eta_seconds': int(self.eta_seconds)
+                'speed_bps': int(current_speed),
+                'eta_seconds': int(current_eta)
             }
         }
 

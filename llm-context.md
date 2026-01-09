@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 39 <!-- CURRENT-STEP -->
+## Current Step: 40 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -201,7 +201,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 38. Polish visual design (consistent spacing, colors, typography)
 
 ### Phase 10: Testing & Edge Cases
-- [ ] 39. Test network errors (timeout, connection drop, DNS failure)
+- [x] 39. Test network errors (timeout, connection drop, DNS failure)
 - [ ] 40. Test server restart (downloads resume correctly, state preserved)
 - [ ] 41. Test concurrent downloads (queue management, rate limiting applies correctly)
 - [ ] 42. Test disk space issues (handle out-of-space gracefully)
@@ -258,9 +258,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed and progress text in row 3 (speed right-aligned), progress bar in row 4. Added Settings to navigation menu for mobile access. Fixed mobile nav collapse with opacity/visibility transitions. Added onchange event handlers alongside oninput for better mobile browser compatibility with filename conflict detection. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
 | 37 | Added comprehensive state transition animations: progress bars with shimmer effect (0.5s cubic-bezier), speed indicator pulse animation, download row hover transforms, connection status pulse with box-shadow, modal fade/slide-in animations, navigation and folder browser hover effects, and smooth color transitions for all status changes. All animations use hardware-accelerated CSS transforms with Material Design standard easing. |
 | 38 | Polished visual design with comprehensive design system: created CSS custom properties for spacing (4px scale), typography (consistent font sizes and line heights), border radius, and transitions. Applied design tokens across all components for consistent spacing, colors, and typography. Standardized all padding, margins, gaps, font sizes, border-radius, and transitions to use variables. This ensures visual consistency and makes future design changes much easier. |
+| 39 | Added error message display in UI for failed downloads. Shows error text with warning icon below URL, 'Failed' status button, and toast notifications when downloads fail. Fixed speed indicator to show 0 when download stalls (no bytes for 3+ seconds). Tested DNS failures (handled correctly with error messages), connection drops (resume automatically), and verified 300s socket read timeout is configured. Added exclamation-triangle icon to icon set. |
 <!-- CONTEXT-END -->
 
 ---
@@ -282,6 +282,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 24: simple_websocket library: Using ws.close(reason=1008, message='...') causes 'Invalid frame header' errors. Sending a message immediately before close also breaks the close handshake. Solution: send auth_error message type, add small delay (10ms), then call ws.close() without parameters. Client detects message type instead of close code.
 - Step 34.01: Always use os.path.abspath() on environment variable paths to ensure consistent resolution regardless of current working directory. Without this, /downloads can resolve to different locations (c:\downloads vs server\downloads) depending on where the script is run from.
 - Step 34.04: For numeric-only input fields, use type='text' with pattern='[0-9]*' and inputmode='numeric' instead of type='number'. Add inline oninput handler: this.value = this.value.replace(/[^0-9]/g, '') to immediately strip invalid characters. This prevents decimal entry without cursor jumping and provides better mobile keyboard support.
+- Step 39: When displaying real-time metrics like download speed, always detect stalls/disconnections by checking time since last update. If no new data for N seconds (e.g., 3s), reset displayed speed to 0. Without this, UI shows stale speed values that mislead users about connection status.
 <!-- LESSONS-END -->
 
 ---

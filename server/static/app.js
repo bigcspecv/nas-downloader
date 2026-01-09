@@ -377,8 +377,23 @@ function scheduleReconnect() {
 
 function handleWebSocketMessage(data) {
     if (data.type === 'status') {
+        const previousDownloads = downloads;
         downloads = data.downloads || [];
         globalPaused = data.global_paused || false;
+
+        // Detect newly failed downloads
+        if (previousDownloads.length > 0) {
+            downloads.forEach(download => {
+                if (download.status === 'failed') {
+                    const previous = previousDownloads.find(d => d.id === download.id);
+                    if (previous && previous.status !== 'failed') {
+                        // Download just failed
+                        const errorMsg = download.error_message || 'Unknown error';
+                        showNotification('error', 'Download Failed', `${download.filename}: ${errorMsg}`, 5000);
+                    }
+                }
+            });
+        }
 
         // Hide skeleton loaders on first data load
         hideSkeletonLoaders();
@@ -587,6 +602,8 @@ function renderDownloads() {
                             ${escapeHtml(download.url)}
                         </div>
                         ${download.folder ? `<div class="download-folder"><span class="icon-placeholder" data-icon="folder" data-class="icon icon-sm"></span> ${escapeHtml(download.folder)}</div>` : ''}
+                        ${download.status === 'failed' && download.error_message ?
+                            `<div class="download-error"><span class="icon-placeholder" data-icon="exclamation-triangle" data-class="icon icon-sm"></span> ${escapeHtml(download.error_message)}</div>` : ''}
                     </div>
                 </div>
                 <div class="td">
@@ -613,6 +630,10 @@ function renderDownloads() {
                             `<button class="btn-icon btn-disabled" disabled>Queued</button>` : ''}
                         ${download.status === 'paused' ?
                             `<button class="btn-icon" onclick="resumeDownload('${download.id}')">Resume</button>` : ''}
+                        ${download.status === 'failed' ?
+                            `<button class="btn-icon btn-disabled" disabled>Failed</button>` : ''}
+                        ${download.status === 'completed' ?
+                            `<button class="btn-icon btn-disabled" disabled>Completed</button>` : ''}
                         <button class="btn-icon btn-danger" onclick="deleteDownload('${download.id}')">
                             <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
                         </button>

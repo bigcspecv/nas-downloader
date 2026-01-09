@@ -504,6 +504,17 @@ body {
     line-height: var(--leading-tight);
 }
 
+.download-error {
+    font-size: var(--text-xs);
+    color: var(--danger);
+    margin-top: var(--spacing-1);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-weight: 500;
+    line-height: var(--leading-tight);
+}
+
 .download-size {
     font-size: 13px;
     color: var(--text-secondary);
@@ -1752,6 +1763,11 @@ input[type="checkbox"] {
     .download-folder {
         font-size: 10px;
         margin: 0;
+    }
+
+    .download-error {
+        font-size: 10px;
+        margin: var(--spacing-1) 0 0 0;
     }
 
     /* Row 1-2, Col 3: Resume button (first action button) */
