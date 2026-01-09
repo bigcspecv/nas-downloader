@@ -202,10 +202,10 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 
 ### Phase 10: Testing & Edge Cases
 - [x] 39. Test network errors (timeout, connection drop, DNS failure)
-- [ ] 40. Test server restart (downloads resume correctly, state preserved)
-- [ ] 41. Test concurrent downloads (queue management, rate limiting applies correctly)
+- [x] 40. Test server restart (downloads resume correctly, state preserved)
+- [x] 41. Test concurrent downloads (queue management, rate limiting applies correctly)
 - [ ] 42. Test disk space issues (handle out-of-space gracefully)
-- [ ] 43. Test invalid URLs and server errors (404, 500, etc.)
+- [x] 43. Test invalid URLs and server errors (404, 500, etc.)
 
 ### Phase 11: Chrome Extension
 - [ ] 44. Create `extension/manifest.json` (Manifest V3)
