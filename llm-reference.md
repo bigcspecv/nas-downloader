@@ -48,6 +48,7 @@ Historical steps that have been archived from the main context document.
 | 34.05 | Changed temp file naming from filename.ext.ndownload to {download_id}.ndownload for crash recovery and uniqueness. Updated get_temp_file_path() to use ID-based naming, simplified _get_unique_filename() to only check final files, and updated add_download() overwrite logic to only delete final files since temp files are ID-based. |
 | 34.06 | Updated download actions UI to show disabled 'Queued' button for queued downloads instead of 'Pause' button. Added .btn-disabled CSS class with reduced opacity and disabled hover effects for status-only buttons. |
 | 35 | Added initial page load skeleton screens with shimmer animation for sidebar navigation (5 items) and downloads table (3 rows). Skeletons automatically hide and show real content when first WebSocket status message is received. |
+| 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards following user's CSV specification: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed in row 3, progress bar spans columns 1-2 in row 4. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
 <!-- ARCHIVE-END -->
 
 ---

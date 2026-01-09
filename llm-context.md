@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 38 <!-- CURRENT-STEP -->
+## Current Step: 39 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -198,7 +198,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 35. Add loading states (spinners, skeleton screens)
 - [x] 36. Improve responsive design for mobile/tablet
 - [x] 37. Add animations for state transitions (smooth progress updates)
-- [ ] 38. Polish visual design (consistent spacing, colors, typography)
+- [x] 38. Polish visual design (consistent spacing, colors, typography)
 
 ### Phase 10: Testing & Edge Cases
 - [ ] 39. Test network errors (timeout, connection drop, DNS failure)
@@ -258,9 +258,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards following user's CSV specification: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed in row 3, progress bar spans columns 1-2 in row 4. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
 | 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed and progress text in row 3 (speed right-aligned), progress bar in row 4. Added Settings to navigation menu for mobile access. Fixed mobile nav collapse with opacity/visibility transitions. Added onchange event handlers alongside oninput for better mobile browser compatibility with filename conflict detection. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
 | 37 | Added comprehensive state transition animations: progress bars with shimmer effect (0.5s cubic-bezier), speed indicator pulse animation, download row hover transforms, connection status pulse with box-shadow, modal fade/slide-in animations, navigation and folder browser hover effects, and smooth color transitions for all status changes. All animations use hardware-accelerated CSS transforms with Material Design standard easing. |
+| 38 | Polished visual design with comprehensive design system: created CSS custom properties for spacing (4px scale), typography (consistent font sizes and line heights), border radius, and transitions. Applied design tokens across all components for consistent spacing, colors, and typography. Standardized all padding, margins, gaps, font sizes, border-radius, and transitions to use variables. This ensures visual consistency and makes future design changes much easier. |
 <!-- CONTEXT-END -->
 
 ---
@@ -311,6 +311,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | Pagination default of 50 items for history | Balances UI performance with user convenience - most users don't need hundreds of completed downloads visible at once, but 50 is enough for recent history. Prevents unbounded memory usage as download history grows. | 52 |
 | Bulk operations continue on file deletion failures | When clearing completed/failed downloads in bulk, continue processing if individual file deletions fail (permission errors, missing files, etc.). Log errors and show summary notification. One failure shouldn't block clearing entire history. | 65-72 |
 | Use download ID for temp file naming instead of filename-based | Enables crash recovery by matching temp files to DB records via ID. Eliminates temp file conflicts since IDs are unique. Simplifies file management logic. | 34.05 |
+| Design token system with CSS custom properties | Centralizes all design values (spacing on 4px scale, typography scale, color palette, border radius, transitions) into CSS variables. Ensures visual consistency across all components, makes global design changes trivial (change one variable instead of hundreds of values), improves maintainability, and provides clear design constraints for future development. Based on industry-standard 4px spacing grid system. | 38 |
 <!-- DECISIONS-END -->
 
 ---
