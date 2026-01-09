@@ -1,9 +1,14 @@
 // Popup script for NAS Download Manager extension
 let downloads = [];
 let serverUrl = null;
+let apiKey = null;
 let isConnected = false;
 let downloadIds = new Set();
 let lastProgress = {}; // Track last rendered progress percentages
+
+// Folder picker state
+let currentFolderPath = '';
+let pendingDownloadUrl = null;
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
@@ -11,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await updateConnectionStatus();
     await loadDownloads();
     await loadInterceptSetting();
+    await checkPendingDownload();
 
     // Set up event listeners
     setupEventListeners();
@@ -37,14 +43,14 @@ function setupEventListeners() {
     // Main UI
     const addDownloadBtn = document.getElementById('addDownloadBtn');
     if (addDownloadBtn) {
-        addDownloadBtn.addEventListener('click', addDownload);
+        addDownloadBtn.addEventListener('click', addDownloadWithFolderPicker);
     }
 
     const downloadUrl = document.getElementById('downloadUrl');
     if (downloadUrl) {
         downloadUrl.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                addDownload();
+                addDownloadWithFolderPicker();
             }
         });
     }
@@ -84,6 +90,49 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Folder picker modal buttons
+    const closeFolderPickerBtn = document.getElementById('closeFolderPickerBtn');
+    if (closeFolderPickerBtn) {
+        closeFolderPickerBtn.addEventListener('click', closeFolderPicker);
+    }
+
+    const cancelFolderPickerBtn = document.getElementById('cancelFolderPickerBtn');
+    if (cancelFolderPickerBtn) {
+        cancelFolderPickerBtn.addEventListener('click', closeFolderPicker);
+    }
+
+    const confirmFolderPickerBtn = document.getElementById('confirmFolderPickerBtn');
+    if (confirmFolderPickerBtn) {
+        confirmFolderPickerBtn.addEventListener('click', confirmFolderSelection);
+    }
+
+    const createFolderBtn = document.getElementById('createFolderBtn');
+    if (createFolderBtn) {
+        createFolderBtn.addEventListener('click', createNewFolderInPicker);
+    }
+
+    // Event delegation for breadcrumb clicks
+    const folderPickerBreadcrumb = document.getElementById('folderPickerBreadcrumb');
+    if (folderPickerBreadcrumb) {
+        folderPickerBreadcrumb.addEventListener('click', (e) => {
+            const breadcrumbItem = e.target.closest('.breadcrumb-item');
+            if (breadcrumbItem && breadcrumbItem.dataset.path !== undefined) {
+                navigateToFolderInPicker(breadcrumbItem.dataset.path);
+            }
+        });
+    }
+
+    // Event delegation for folder list clicks
+    const folderPickerList = document.getElementById('folderPickerList');
+    if (folderPickerList) {
+        folderPickerList.addEventListener('click', (e) => {
+            const folderItem = e.target.closest('.folder-item');
+            if (folderItem && folderItem.dataset.path !== undefined) {
+                navigateToFolderInPicker(folderItem.dataset.path);
+            }
+        });
+    }
 }
 
 // Check if extension is configured
@@ -98,8 +147,9 @@ async function checkConfiguration() {
         }
 
         serverUrl = result.serverUrl;
+        apiKey = result.apiKey;
         document.getElementById('notConfigured').style.display = 'none';
-        document.getElementById('mainUI').style.display = 'block';
+        document.getElementById('mainUI').style.display = 'flex';
         return true;
     } catch (error) {
         console.error('Failed to check configuration:', error);
@@ -339,6 +389,27 @@ async function addDownload() {
     }
 }
 
+// Add download with folder picker
+async function addDownloadWithFolderPicker() {
+    const urlInput = document.getElementById('downloadUrl');
+    const url = urlInput.value.trim();
+
+    if (!url) {
+        return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('Please enter a valid URL starting with http:// or https://');
+        return;
+    }
+
+    // Clear input early
+    urlInput.value = '';
+
+    // Open folder picker
+    await openFolderPicker(url);
+}
+
 // Pause download
 async function pauseDownload(id) {
     try {
@@ -471,5 +542,219 @@ async function saveInterceptSetting() {
         console.log('Intercept setting saved:', enabled);
     } catch (error) {
         console.error('Failed to save intercept setting:', error);
+    }
+}
+
+// ============ Folder Picker Functions ============
+
+// Check for pending download from context menu
+async function checkPendingDownload() {
+    try {
+        const result = await chrome.storage.local.get(['pendingDownloadUrl']);
+        if (result.pendingDownloadUrl) {
+            // Clear from storage
+            await chrome.storage.local.remove(['pendingDownloadUrl']);
+
+            // Open folder picker with the pending URL
+            await openFolderPicker(result.pendingDownloadUrl);
+        }
+    } catch (error) {
+        console.error('Failed to check pending download:', error);
+    }
+}
+
+// Open folder picker
+async function openFolderPicker(url) {
+    pendingDownloadUrl = url;
+    currentFolderPath = '';
+
+    // Show modal
+    document.getElementById('folderPickerModal').style.display = 'flex';
+
+    // Load root folders
+    await navigateToFolderInPicker('');
+}
+
+// Close folder picker
+function closeFolderPicker() {
+    document.getElementById('folderPickerModal').style.display = 'none';
+    pendingDownloadUrl = null;
+    currentFolderPath = '';
+}
+
+// Navigate to a folder in picker
+async function navigateToFolderInPicker(path) {
+    currentFolderPath = path;
+
+    const folderListEl = document.getElementById('folderPickerList');
+
+    // Show loading state
+    folderListEl.innerHTML = '<div class="folder-list-loading">Loading folders...</div>';
+
+    try {
+        const endpoint = path ? `/api/folders?path=${encodeURIComponent(path)}` : '/api/folders';
+        const response = await fetch(`${serverUrl}${endpoint}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Update breadcrumb
+        renderFolderPickerBreadcrumb(path);
+
+        // Render folder list
+        renderFolderPickerList(data.folders || [], path);
+    } catch (error) {
+        console.error('Failed to load folders:', error);
+        folderListEl.innerHTML = '<div class="folder-list-empty">Failed to load folders</div>';
+    }
+}
+
+// Render breadcrumb
+function renderFolderPickerBreadcrumb(path) {
+    const breadcrumbEl = document.getElementById('folderPickerBreadcrumb');
+
+    if (!path) {
+        // Root directory
+        breadcrumbEl.innerHTML = '<span class="breadcrumb-item" data-path="">Downloads</span>';
+    } else {
+        // Build breadcrumb from path parts
+        const parts = path.split('/').filter(p => p);
+        let html = '<span class="breadcrumb-item" data-path="">Downloads</span>';
+
+        let currentPath = '';
+        parts.forEach((part) => {
+            currentPath += (currentPath ? '/' : '') + part;
+            const pathForClick = currentPath;
+            html += '<span class="breadcrumb-separator">/</span>';
+            html += `<span class="breadcrumb-item" data-path="${escapeHtml(pathForClick)}">${escapeHtml(part)}</span>`;
+        });
+
+        breadcrumbEl.innerHTML = html;
+    }
+
+    // Scroll to the right to show current folder
+    setTimeout(() => {
+        breadcrumbEl.scrollLeft = breadcrumbEl.scrollWidth;
+    }, 0);
+}
+
+// Render folder list
+function renderFolderPickerList(folders, currentPath) {
+    const folderListEl = document.getElementById('folderPickerList');
+
+    if (folders.length === 0 && !currentPath) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">No folders yet. Click "+" to create one.</div>';
+        return;
+    }
+
+    let html = '';
+
+    // Add parent folder option if not at root
+    if (currentPath) {
+        const parentPath = currentPath.split('/').slice(0, -1).join('/');
+        html += `
+            <div class="folder-item parent-folder" data-path="${escapeHtml(parentPath)}">
+                <svg class="folder-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 15l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="folder-item-name">..</span>
+            </div>
+        `;
+    }
+
+    // Add folders
+    folders.forEach(folder => {
+        html += `
+            <div class="folder-item" data-path="${escapeHtml(folder.path)}">
+                <svg class="folder-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2h-8L9 5H5c-1.1 0-2 .9-2 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                </svg>
+                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+            </div>
+        `;
+    });
+
+    if (folders.length === 0 && currentPath) {
+        html += '<div class="folder-list-empty">No subfolders</div>';
+    }
+
+    folderListEl.innerHTML = html;
+}
+
+// Create new folder in picker
+async function createNewFolderInPicker() {
+    const folderName = prompt('Enter the name for the new folder:');
+
+    if (!folderName) {
+        return; // User cancelled
+    }
+
+    // Validate folder name
+    if (folderName.includes('/') || folderName.includes('\\')) {
+        alert('Folder name cannot contain / or \\');
+        return;
+    }
+
+    if (folderName.trim() === '') {
+        alert('Folder name cannot be empty');
+        return;
+    }
+
+    // Construct new folder path
+    const newFolderPath = currentFolderPath
+        ? `${currentFolderPath}/${folderName}`
+        : folderName;
+
+    try {
+        const response = await fetch(`${serverUrl}/api/folders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({ path: newFolderPath })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        // Reload current folder
+        await navigateToFolderInPicker(currentFolderPath);
+    } catch (error) {
+        console.error('Failed to create folder:', error);
+        alert('Failed to create folder: ' + error.message);
+    }
+}
+
+// Confirm folder selection and add download
+async function confirmFolderSelection() {
+    if (!pendingDownloadUrl) {
+        return;
+    }
+
+    try {
+        await chrome.runtime.sendMessage({
+            type: 'add_download',
+            url: pendingDownloadUrl,
+            folder: currentFolderPath
+        });
+
+        // Close modal
+        closeFolderPicker();
+
+        // Reload downloads after short delay
+        setTimeout(loadDownloads, 500);
+    } catch (error) {
+        console.error('Failed to add download:', error);
+        alert('Failed to add download');
     }
 }

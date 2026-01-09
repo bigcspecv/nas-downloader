@@ -62,11 +62,23 @@ function createContextMenu() {
 }
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'nas-download' || info.menuItemId === 'nas-download-to') {
-        const url = info.linkUrl || info.srcUrl;
-        if (url) {
-            addDownload(url);
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    const url = info.linkUrl || info.srcUrl;
+    if (!url) return;
+
+    if (info.menuItemId === 'nas-download') {
+        // Direct download to default folder
+        addDownload(url);
+    } else if (info.menuItemId === 'nas-download-to') {
+        // Store URL and open popup for folder selection
+        try {
+            await chrome.storage.local.set({ pendingDownloadUrl: url });
+            // Open the popup automatically
+            chrome.action.openPopup();
+        } catch (error) {
+            console.error('Failed to open popup:', error);
+            // Fallback: show notification if popup fails to open
+            showNotification('Select Folder', 'Click the extension icon to choose a download folder');
         }
     }
 });
@@ -235,7 +247,7 @@ function updateConnectionStatus(connected) {
 }
 
 // Add download via API
-async function addDownload(url) {
+async function addDownload(url, folder = '') {
     if (!serverUrl || !apiKey) {
         console.error('Cannot add download: not configured');
         showNotification('Not configured', 'Please configure server settings first');
@@ -251,7 +263,7 @@ async function addDownload(url) {
             },
             body: JSON.stringify({
                 url: url,
-                folder: ''  // Use default folder
+                folder: folder || ''  // Use provided folder or default
             })
         });
 
@@ -315,7 +327,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ downloads: downloads });
 
     } else if (message.type === 'add_download') {
-        addDownload(message.url);
+        addDownload(message.url, message.folder);
         sendResponse({ success: true });
 
     } else if (message.type === 'pause_download') {
