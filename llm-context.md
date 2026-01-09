@@ -193,7 +193,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [x] 34.05 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
    - [x] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
-   - [ ] 34.07 If the user downloads a file that has the same name as an inprogress download, treate it the same way as we handle downloading files where a file with the same name exists in the download folder.
+   - [ ] 34.07 If the user downloads a file that has the same name as an inprogress download, treat it the same way as we handle downloading files where a file with the same name exists in the download folder.
+   - [ ] 34.08 Fix bug in server where setting the max concurrent downloads while multple downloads are in progress does not change the total number of active downloads. For example if there are 5 active downloads the the user sets max concurrent downloads to 1 - all five remaon active. It should queue all but the top one in this example.
+   - [ ] 34.09 make the download card in the webui match the lok and feel of the download card in the extension. Do not make changes to the extension.
 
 ### Phase 9: UI Polish
 - [x] 35. Add loading states (spinners, skeleton screens)
@@ -227,10 +229,10 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.02.03 Add ability to pause all downloads (global pause button on main popup)
    - [x] 48.02.04 Style scrollbar to match look and feel to the popup
    - [x] 48.02.05 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup) checkboxes need to match overall extension styling
-   - [ ] 48.02.06 Add ability to set the server's global download speed in settings on the main popup by clicking on the global download speed in the footer and bringing up a modal
-   - [ ] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
+   - [x] 48.02.06 Add ability to set the server's global download speed in settings on the main popup by clicking on the global download speed in the footer and bringing up a modal
+   - [x] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
 
-### Phase 12: Download History - Core Infrastructure
+### Phase 12: Download History - WebUI - Core Infrastructure
 - [ ] 49. Add `load_history` setting to settings table (default '1' = enabled)
 - [ ] 50. Create `get_history_downloads()` method to query DB for completed/failed downloads
 - [ ] 51. Modify `get_downloads()` to merge active (memory) + history (DB query)
@@ -240,7 +242,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 55. Update UI filter tabs to show correct counts including history
 - [ ] 56. Verify real-time updates work smoothly for active downloads
 
-### Phase 13: Download History - Deletion Management
+### Phase 13: Download History - WebUI - Deletion Management
 - [ ] 57. Create `delete_history_download(id)` method (DB-only, no memory lookup)
 - [ ] 58. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
 - [ ] 59. Verify `delete_file=true/false` query param works for completed downloads
@@ -250,7 +252,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 63. Broadcast deletion events via WebSocket to all clients
 - [ ] 64. Test deletion with/without file removal across multiple clients
 
-### Phase 14: Download History - Bulk Operations
+### Phase 14: Download History - WebUI - Bulk Operations
 - [ ] 65. Add POST `/api/downloads/clear-completed` endpoint
 - [ ] 66. Add POST `/api/downloads/clear-failed` endpoint
 - [ ] 67. Add `delete_files=true/false` query param for bulk clear
@@ -274,9 +276,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 48.02.02 | Added folder picker modal to Chrome extension popup with breadcrumb navigation and folder list UI. Simplified UX by consolidating to single Add button that opens folder picker. Modified background.js context menu handlers so 'NAS Download to' stores URL and auto-opens popup. Users can now select destination folder for manual URL entry and context menu downloads. Fixed footer positioning issue caused by duplicate CSS rules overriding flex-shrink property. |
-| 48.02.04 | Added custom scrollbar styling to Chrome extension popup. Downloads list and folder list now have matching dark-themed scrollbars with 8px width, rounded thumb with border padding trick, and hover highlight. Uses existing CSS variables (--bg-secondary, --bg-tertiary, --border-color, --text-muted) for consistency. |
 | 48.02.05 | Added multi-select delete feature to Chrome extension popup: toolbar with select mode toggle, selection count with divider, Select All button, and Delete button. Moved URL input to folder picker modal. Add Download button pinned as 32x32 square on right. All toolbar buttons standardized to 28px height. Fixed Select All by forcing full re-render to update checkbox states. |
+| 48.02.06 | Added global rate limit settings modal to Chrome extension popup. Clicking the speed display in footer opens modal with rate limit input (value + unit selector for B/s, KB/s, MB/s). Modal loads current settings from server via GET /api/settings and saves via PATCH /api/settings. Added CSS styles for settings form elements matching extension design. |
+| 48.02.07 | Added max concurrent downloads setting to Chrome extension settings modal. Input field with validation (1-10 range). Updated loadServerSettings to populate value from server and saveServerSettings to save both rate limit and max concurrent in single PATCH request. |
 <!-- CONTEXT-END -->
 
 ---

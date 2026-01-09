@@ -15,6 +15,9 @@ let pendingDownloadUrl = null;
 let selectMode = false;
 let selectedDownloads = new Set();
 
+// Current server settings
+let currentSettings = null;
+
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
     await checkConfiguration();
@@ -190,6 +193,44 @@ function setupEventListeners() {
             if (folderItem && folderItem.dataset.path !== undefined) {
                 navigateToFolderInPicker(folderItem.dataset.path);
             }
+        });
+    }
+
+    // Settings modal - click on global speed to open
+    const globalSpeed = document.getElementById('globalSpeed');
+    if (globalSpeed) {
+        globalSpeed.addEventListener('click', openSettingsModal);
+    }
+
+    // Settings modal buttons
+    const closeSettingsModalBtn = document.getElementById('closeSettingsModalBtn');
+    if (closeSettingsModalBtn) {
+        closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
+    }
+
+    const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+    if (cancelSettingsBtn) {
+        cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+    }
+
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveServerSettings);
+    }
+
+    // Rate limit input - only allow numbers
+    const rateLimitInput = document.getElementById('rateLimitInput');
+    if (rateLimitInput) {
+        rateLimitInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+    }
+
+    // Max concurrent input - only allow numbers
+    const maxConcurrentInput = document.getElementById('maxConcurrentInput');
+    if (maxConcurrentInput) {
+        maxConcurrentInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
         });
     }
 }
@@ -1002,4 +1043,153 @@ async function deleteSelectedDownloads() {
 
     // Reload downloads after a short delay
     setTimeout(loadDownloads, 500);
+}
+
+// ============ Server Settings Modal Functions ============
+
+// Open settings modal
+async function openSettingsModal() {
+    // Load current settings from server
+    await loadServerSettings();
+
+    // Show modal
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+
+// Close settings modal
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+// Load current settings from server
+async function loadServerSettings() {
+    if (!serverUrl || !apiKey) {
+        console.error('Cannot load settings: not configured');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${serverUrl}/api/settings`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        currentSettings = await response.json();
+
+        // Populate rate limit fields
+        const rateLimitBps = parseInt(currentSettings.global_rate_limit_bps) || 0;
+        populateRateLimitFields(rateLimitBps);
+
+        // Populate max concurrent downloads
+        const maxConcurrent = parseInt(currentSettings.max_concurrent_downloads) || 3;
+        const maxConcurrentInput = document.getElementById('maxConcurrentInput');
+        if (maxConcurrentInput) {
+            maxConcurrentInput.value = maxConcurrent;
+        }
+
+    } catch (error) {
+        console.error('Failed to load settings:', error);
+        // Set defaults
+        populateRateLimitFields(0);
+        const maxConcurrentInput = document.getElementById('maxConcurrentInput');
+        if (maxConcurrentInput) {
+            maxConcurrentInput.value = 3;
+        }
+    }
+}
+
+// Populate rate limit input fields based on bps value
+function populateRateLimitFields(rateLimitBps) {
+    const rateLimitInput = document.getElementById('rateLimitInput');
+    const rateLimitUnitSelect = document.getElementById('rateLimitUnitSelect');
+
+    if (!rateLimitInput || !rateLimitUnitSelect) return;
+
+    let value = 0;
+    let unit = 1048576; // Default to MB/s
+
+    if (rateLimitBps === 0) {
+        // Unlimited
+        value = 0;
+        unit = 1048576; // MB/s
+    } else if (rateLimitBps >= 1048576 && rateLimitBps % 1048576 === 0) {
+        // Exact MB/s
+        value = rateLimitBps / 1048576;
+        unit = 1048576;
+    } else if (rateLimitBps >= 1024 && rateLimitBps % 1024 === 0) {
+        // Exact KB/s
+        value = rateLimitBps / 1024;
+        unit = 1024;
+    } else {
+        // B/s
+        value = rateLimitBps;
+        unit = 1;
+    }
+
+    rateLimitInput.value = value;
+    rateLimitUnitSelect.value = unit;
+}
+
+// Save settings to server
+async function saveServerSettings() {
+    if (!serverUrl || !apiKey) {
+        alert('Not configured');
+        return;
+    }
+
+    const rateLimitInput = document.getElementById('rateLimitInput');
+    const rateLimitUnitSelect = document.getElementById('rateLimitUnitSelect');
+    const maxConcurrentInput = document.getElementById('maxConcurrentInput');
+
+    // Validate rate limit
+    const rateLimitValue = parseInt(rateLimitInput.value) || 0;
+    if (rateLimitValue < 0) {
+        alert('Rate limit cannot be negative');
+        return;
+    }
+
+    // Validate max concurrent downloads
+    const maxConcurrent = parseInt(maxConcurrentInput.value) || 3;
+    if (maxConcurrent < 1) {
+        alert('Max concurrent downloads must be at least 1');
+        return;
+    }
+    if (maxConcurrent > 10) {
+        alert('Max concurrent downloads cannot exceed 10');
+        return;
+    }
+
+    const rateLimitUnit = parseInt(rateLimitUnitSelect.value);
+    const rateLimitBps = rateLimitValue * rateLimitUnit;
+
+    try {
+        const response = await fetch(`${serverUrl}/api/settings`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                global_rate_limit_bps: rateLimitBps.toString(),
+                max_concurrent_downloads: maxConcurrent.toString()
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        // Close modal on success
+        closeSettingsModal();
+
+    } catch (error) {
+        console.error('Failed to save settings:', error);
+        alert('Failed to save settings: ' + error.message);
+    }
 }
