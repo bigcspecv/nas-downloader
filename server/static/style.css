@@ -190,6 +190,16 @@ body {
     color: var(--bg-primary);
 }
 
+.nav-separator {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 12px;
+}
+
+.nav-item-settings {
+    margin-top: 4px;
+}
+
 .sidebar-footer {
     padding: 12px;
     border-top: 1px solid var(--border-color);
@@ -1291,6 +1301,28 @@ input[type="checkbox"] {
    Responsive Design
    ============================================================================ */
 
+/* Hamburger Menu Button (hidden by default, shown on mobile) */
+.menu-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-primary);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.menu-toggle:hover {
+    background: var(--bg-hover);
+}
+
+.menu-toggle .icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* Tablet (Large) */
 @media (max-width: 968px) {
     .sidebar {
         width: 220px;
@@ -1298,17 +1330,26 @@ input[type="checkbox"] {
 
     .table-header,
     .download-row {
-        grid-template-columns: 36px 1fr 100px 100px;
+        grid-template-columns: 36px 1fr 100px 120px 100px;
     }
 
     .th-speed,
-    .th-actions,
-    .download-speed,
-    .download-actions {
+    .download-speed {
         display: none;
+    }
+
+    /* Make action buttons smaller */
+    .download-actions {
+        gap: 6px;
+    }
+
+    .btn-icon {
+        padding: 6px 10px;
+        font-size: 11px;
     }
 }
 
+/* Tablet (Small) */
 @media (max-width: 768px) {
     .app-container {
         flex-direction: column;
@@ -1319,28 +1360,443 @@ input[type="checkbox"] {
         height: auto;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        position: relative;
+    }
+
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .sidebar-nav {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, visibility 0s 0.3s;
+        opacity: 0;
+        visibility: hidden;
+        padding: 0;
+        margin: 0;
+    }
+
+    .sidebar-nav.open {
+        max-height: 400px;
+        opacity: 1;
+        visibility: visible;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, visibility 0s;
+        padding: 0;
+    }
+
+    .sidebar-footer {
         display: none;
     }
 
+    /* Toolbar optimizations */
     .toolbar {
         flex-wrap: wrap;
         padding: 12px 16px;
+        gap: 10px;
     }
 
     .toolbar-left {
+        flex: 1;
         flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .toolbar-right {
+        flex: 1 1 100%;
+        order: 3;
     }
 
     .search-box {
         width: 100%;
     }
 
+    /* Larger touch targets for buttons */
+    .btn-action {
+        padding: 10px 14px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+
+    /* Table adjustments */
+    .table-header,
+    .download-row {
+        grid-template-columns: 36px 1fr 90px 110px;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .th-speed,
+    .download-speed {
+        display: none;
+    }
+
+    /* Status bar adjustments */
+    .status-bar {
+        padding: 8px 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 11px;
+    }
+
+    .status-separator {
+        display: none;
+    }
+
+    /* Modal optimizations */
+    .modal-dialog {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .folder-list {
+        max-height: 200px;
+    }
+
+    /* Notification adjustments */
     .notification-container {
-        left: 20px;
-        right: 20px;
+        left: 16px;
+        right: 16px;
+        top: 16px;
         max-width: none;
+    }
+
+    .notification {
+        padding: 14px;
+    }
+}
+
+/* Mobile (Small Phones) */
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+    }
+
+    /* Sidebar adjustments */
+    .sidebar-header {
+        padding: 16px;
+    }
+
+    .app-brand {
+        gap: 10px;
+    }
+
+    .brand-name {
+        font-size: 15px;
+    }
+
+    .brand-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    /* Toolbar - stack buttons vertically */
+    .toolbar {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .toolbar-left {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .btn-action {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 16px;
+    }
+
+    /* Hide delete button text on very small screens */
+    #deleteSelectedBtn {
+        white-space: nowrap;
+    }
+
+    /* Card-style layout for downloads */
+    .table-header {
+        display: none;
+    }
+
+    .download-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-rows: auto auto auto auto;
+        gap: 4px 10px;
+        padding: 10px 12px;
+        position: relative;
+        border-radius: 8px;
+        min-height: auto;
+    }
+
+    /* Row 1-2, Col 1: Checkbox */
+    .td-checkbox {
+        grid-column: 1;
+        grid-row: 1 / 3;
+        align-self: start;
+        padding-top: 2px;
+    }
+
+    /* Row 1-2, Col 2: Filename and URL */
+    .download-row .td:has(.download-info) {
+        grid-column: 2;
+        grid-row: 1 / 3;
+        min-width: 0;
+        align-self: start;
+    }
+
+    .download-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .download-name {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .download-url {
+        font-size: 10px;
+        line-height: 1.2;
+        opacity: 0.6;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .download-folder {
+        font-size: 10px;
+        margin: 0;
+    }
+
+    /* Row 1-2, Col 3: Resume button (first action button) */
+    .download-row .td:has(.download-actions) {
+        grid-column: 3;
+        grid-row: 1 / 5;
+        justify-self: end;
+        align-self: start;
+    }
+
+    .download-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+    }
+
+    .btn-icon {
+        padding: 6px 12px;
+        min-height: 32px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    /* Hide size on mobile */
+    .download-row .td:has(.download-size) {
+        display: none;
+    }
+
+    /* Row 3, Col 1-2: Progress text and speed on same line */
+    .download-row .td:has(.download-speed) {
+        grid-column: 2;
+        grid-row: 3;
+        justify-self: end;
+        align-self: start;
+        display: block;
+    }
+
+    .download-speed {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1;
+        margin: 0;
+        color: var(--accent-primary);
+    }
+
+    /* Row 3, Col 1-2: Progress text (percentage) */
+    .download-row .td:has(.download-progress) {
+        grid-column: 1 / 3;
+        grid-row: 3 / 5;
+    }
+
+    .download-progress {
+        display: flex !important;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+        margin: 0;
+    }
+
+    .progress-text {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        padding-right: 8px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--bg-tertiary);
+        border-radius: 2px;
+        overflow: hidden;
+        margin: 0;
+    }
+
+    /* Status bar - more compact */
+    .status-bar {
+        padding: 8px 12px;
+        gap: 8px;
+        font-size: 10px;
+    }
+
+    .status-item {
+        font-size: 10px;
+    }
+
+    .status-item .icon {
+        width: 12px;
+        height: 12px;
+    }
+
+    /* Modal optimizations */
+    .modal-dialog {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal-header h2 {
+        font-size: 16px;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .modal-footer button {
+        width: 100%;
+        padding: 12px;
+    }
+
+    /* Form elements */
+    .form-field {
+        margin-bottom: 16px;
+    }
+
+    .form-field label {
+        font-size: 12px;
+    }
+
+    .form-field input,
+    .form-field select {
+        padding: 12px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Folder browser */
+    .folder-browser-header {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .breadcrumb {
+        font-size: 12px;
+    }
+
+    .folder-list {
+        max-height: 180px;
+    }
+
+    .folder-item {
+        padding: 12px 10px;
+        min-height: 44px;
+    }
+
+    .folder-item-name {
+        font-size: 13px;
+    }
+
+    .btn-icon-small {
+        padding: 8px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    /* Settings modal - input with select */
+    .input-with-select {
+        grid-template-columns: 1fr 100px;
+        gap: 6px;
+    }
+
+    /* Notifications */
+    .notification-container {
+        left: 12px;
+        right: 12px;
+        top: 12px;
+    }
+
+    .notification {
+        padding: 12px;
+    }
+
+    .notification-title {
+        font-size: 13px;
+    }
+
+    .notification-message {
+        font-size: 12px;
+    }
+
+    /* Empty state */
+    .empty-state {
+        padding: 60px 20px;
+    }
+
+    .empty-state .icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .empty-state p {
+        font-size: 14px;
+    }
+
+    .empty-state .hint {
+        font-size: 12px;
     }
 }

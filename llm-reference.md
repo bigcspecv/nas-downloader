@@ -45,6 +45,8 @@ Historical steps that have been archived from the main context document.
 | 34.03 | Fixed temp file cleanup on cancellation: added await for task.cancel() to ensure download task fully completes before deleting temp file. This ensures file handles are closed before deletion attempt. Added error logging for failed deletions. |
 | 34.03 | Fixed temp file cleanup on cancellation: added await for task.cancel() to ensure download task fully completes before deleting temp file. This ensures file handles are closed before deletion attempt. Added error logging for failed deletions. |
 | 34.04 | Fixed rate limit input validation: changed from type='number' to type='text' with pattern='[0-9]*' and inputmode='numeric' to prevent decimal entry at input level using inline oninput handler. Added rate limit display to status bar showing current limit (unlimited or formatted speed). Made rate limit display use formatSpeed() for consistency with download speed formatting. |
+| 34.05 | Changed temp file naming from filename.ext.ndownload to {download_id}.ndownload for crash recovery and uniqueness. Updated get_temp_file_path() to use ID-based naming, simplified _get_unique_filename() to only check final files, and updated add_download() overwrite logic to only delete final files since temp files are ID-based. |
+| 34.06 | Updated download actions UI to show disabled 'Queued' button for queued downloads instead of 'Pause' button. Added .btn-disabled CSS class with reduced opacity and disabled hover effects for status-only buttons. |
 <!-- ARCHIVE-END -->
 
 ---

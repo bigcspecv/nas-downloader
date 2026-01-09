@@ -103,7 +103,7 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 36 <!-- CURRENT-STEP -->
+## Current Step: 37 <!-- CURRENT-STEP -->
 
 ## In Progress
 
@@ -195,8 +195,8 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
 
 ### Phase 9: UI Polish
-- [ ] 35. Add loading states (spinners, skeleton screens)
-- [ ] 36. Improve responsive design for mobile/tablet
+- [x] 35. Add loading states (spinners, skeleton screens)
+- [x] 36. Improve responsive design for mobile/tablet
 - [ ] 37. Add animations for state transitions (smooth progress updates)
 - [ ] 38. Polish visual design (consistent spacing, colors, typography)
 
@@ -258,9 +258,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 34.05 | Changed temp file naming from filename.ext.ndownload to {download_id}.ndownload for crash recovery and uniqueness. Updated get_temp_file_path() to use ID-based naming, simplified _get_unique_filename() to only check final files, and updated add_download() overwrite logic to only delete final files since temp files are ID-based. |
-| 34.06 | Updated download actions UI to show disabled 'Queued' button for queued downloads instead of 'Pause' button. Added .btn-disabled CSS class with reduced opacity and disabled hover effects for status-only buttons. |
 | 35 | Added initial page load skeleton screens with shimmer animation for sidebar navigation (5 items) and downloads table (3 rows). Skeletons automatically hide and show real content when first WebSocket status message is received. |
+| 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards following user's CSV specification: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed in row 3, progress bar spans columns 1-2 in row 4. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
+| 36 | Implemented mobile responsive design with 3 breakpoints (968px, 768px, 480px). Added hamburger menu toggle for mobile navigation. Created 4-row CSS Grid layout for mobile download cards: checkbox and filename/URL span rows 1-2, action buttons span all rows in column 3, speed and progress text in row 3 (speed right-aligned), progress bar in row 4. Added Settings to navigation menu for mobile access. Fixed mobile nav collapse with opacity/visibility transitions. Added onchange event handlers alongside oninput for better mobile browser compatibility with filename conflict detection. Scoped initializeIcons() to prevent icon refresh flicker. Progress bars use consistent thin 4px styling across all devices. |
 <!-- CONTEXT-END -->
 
 ---

@@ -29,8 +29,8 @@ function icon(name, className = 'icon') {
     return `<span class="icon-placeholder" data-icon="${name}" data-class="${className}"></span>`;
 }
 
-async function initializeIcons() {
-    const placeholders = document.querySelectorAll('.icon-placeholder');
+async function initializeIcons(container = document) {
+    const placeholders = container.querySelectorAll('.icon-placeholder');
     for (const placeholder of placeholders) {
         const iconName = placeholder.dataset.icon;
         const iconClass = placeholder.dataset.class;
@@ -460,8 +460,8 @@ function hideSkeletonLoaders() {
     const navContent = document.querySelector('.nav-content');
     if (navContent) {
         navContent.style.display = 'block';
-        // Re-initialize icons in nav
-        initializeIcons();
+        // Re-initialize icons in nav only
+        initializeIcons(navContent);
     }
 }
 
@@ -481,6 +481,21 @@ function switchCategory(filter) {
     });
 
     renderDownloads();
+
+    // Close mobile menu after selection
+    if (window.innerWidth <= 768) {
+        const nav = document.querySelector('.sidebar-nav');
+        if (nav) {
+            nav.classList.remove('open');
+        }
+    }
+}
+
+function toggleMobileMenu() {
+    const nav = document.querySelector('.sidebar-nav');
+    if (nav) {
+        nav.classList.toggle('open');
+    }
 }
 
 function updateCategoryCounts() {
@@ -542,7 +557,7 @@ function renderDownloads() {
                 <p class="hint">Click "New Download" to get started</p>
             </div>
         `;
-        initializeIcons();
+        initializeIcons(container);
         return;
     }
 
@@ -609,7 +624,7 @@ function renderDownloads() {
 
     updateSelectAllCheckbox();
     updateDeleteButton();
-    initializeIcons();
+    initializeIcons(container);
 }
 
 function getProgressClass(status) {
@@ -756,7 +771,7 @@ function updatePauseButton() {
             Pause All
         `;
     }
-    initializeIcons();
+    initializeIcons(button);
 }
 
 async function togglePauseAll() {
@@ -812,6 +827,14 @@ function openSettingsModal() {
     const modal = document.getElementById('settingsModal');
     modal.classList.add('active');
     loadSettings();
+
+    // Close mobile menu after opening settings
+    if (window.innerWidth <= 768) {
+        const nav = document.querySelector('.sidebar-nav');
+        if (nav) {
+            nav.classList.remove('open');
+        }
+    }
 }
 
 function closeSettingsModal() {
@@ -1154,7 +1177,7 @@ function updateBreadcrumb(path) {
     }
 
     // Re-initialize icons in breadcrumb
-    initializeIcons();
+    initializeIcons(breadcrumbEl);
 
     // Scroll to the right to show current folder
     setTimeout(() => {
@@ -1219,7 +1242,7 @@ function renderFolderList(folders, currentPath) {
     folderListEl.innerHTML = html;
 
     // Re-initialize icons in folder list
-    initializeIcons();
+    initializeIcons(folderListEl);
 }
 
 function selectFolder(path) {
