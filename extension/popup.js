@@ -162,8 +162,13 @@ function renderDownloads() {
         downloadIds = currentIds;
         lastProgress = {};
         container.innerHTML = downloads.map(download => {
-            const progress = download.total_bytes > 0
-                ? Math.round((download.downloaded_bytes / download.total_bytes) * 100)
+            const prog = download.progress || {};
+            const downloadedBytes = prog.downloaded_bytes || 0;
+            const totalBytes = prog.total_bytes || 0;
+            const speedBps = prog.speed_bps || 0;
+
+            const progress = totalBytes > 0
+                ? Math.round((downloadedBytes / totalBytes) * 100)
                 : 0;
 
             lastProgress[download.id] = progress;
@@ -188,7 +193,8 @@ function renderDownloads() {
                     </div>
                     <div class="download-info">
                         <span class="download-status ${statusClass}">${statusText}</span>
-                        <span data-bytes="${download.id}">${formatBytes(download.downloaded_bytes)} / ${formatBytes(download.total_bytes)}</span>
+                        <span data-speed="${download.id}">${download.status === 'downloading' && speedBps > 0 ? formatSpeed(speedBps) : '-'}</span>
+                        <span data-bytes="${download.id}">${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}</span>
                     </div>
                 </div>
             `;
@@ -196,8 +202,13 @@ function renderDownloads() {
     } else {
         // Only update progress for downloads where percentage actually changed
         downloads.forEach(download => {
-            const progress = download.total_bytes > 0
-                ? Math.round((download.downloaded_bytes / download.total_bytes) * 100)
+            const prog = download.progress || {};
+            const downloadedBytes = prog.downloaded_bytes || 0;
+            const totalBytes = prog.total_bytes || 0;
+            const speedBps = prog.speed_bps || 0;
+
+            const progress = totalBytes > 0
+                ? Math.round((downloadedBytes / totalBytes) * 100)
                 : 0;
 
             // Only update if progress percentage changed
@@ -210,10 +221,19 @@ function renderDownloads() {
                 }
             }
 
+            // Update speed
+            const speedEl = document.querySelector(`[data-speed="${download.id}"]`);
+            if (speedEl) {
+                const newSpeed = download.status === 'downloading' && speedBps > 0 ? formatSpeed(speedBps) : '-';
+                if (speedEl.textContent !== newSpeed) {
+                    speedEl.textContent = newSpeed;
+                }
+            }
+
             // Update byte counts (use textContent to avoid parsing)
             const bytesEl = document.querySelector(`[data-bytes="${download.id}"]`);
             if (bytesEl) {
-                const newText = `${formatBytes(download.downloaded_bytes)} / ${formatBytes(download.total_bytes)}`;
+                const newText = `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}`;
                 if (bytesEl.textContent !== newText) {
                     bytesEl.textContent = newText;
                 }
@@ -388,6 +408,22 @@ function formatBytes(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Format speed (bytes per second) to human readable
+function formatSpeed(speedBps) {
+    if (speedBps >= 1048576) {
+        // >= 1 MB/s: show MB/s
+        return (speedBps / 1048576).toFixed(2) + ' MB/s';
+    } else if (speedBps >= 1024) {
+        // >= 1 KB/s: show KB/s
+        return (speedBps / 1024).toFixed(2) + ' KB/s';
+    } else if (speedBps > 0) {
+        // < 1 KB/s: show B/s
+        return speedBps.toFixed(0) + ' B/s';
+    } else {
+        return '0 B/s';
+    }
 }
 
 // Escape HTML to prevent XSS

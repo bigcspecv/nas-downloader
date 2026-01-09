@@ -214,6 +214,17 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 47. Create `extension/popup.html` + `popup.js` (UI mirroring web UI features)
 - [x] 48. Create placeholder icons (16, 48, 128px)
 
+### Phase 11.1 Fix Bugs in and add features to chrome extension
+- [x] 48.01 Download card bugs:
+   - [x] 48.01.01 download speed not showing up on card
+   - [x] 48.01.02 Download Progress not working. Always shows 0 B / 0 B
+   - [x] 48.01.03 Download Pause Button not working
+- [ ] 48.02 Missing features:
+   - [ ] 48.02.01 Add ability to pause all downloads (global pause button on main popup)
+   - [ ] 48.02.02 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup)
+   - [ ] 48.02.03 Add ability to set the server's global download speed in settings on the main popup
+   - [ ] 48.02.04 Add ability to set the server's max concurrent downloads in settings on the main popup
+
 ### Phase 12: Download History - Core Infrastructure
 - [ ] 49. Add `load_history` setting to settings table (default '1' = enabled)
 - [ ] 50. Create `get_history_downloads()` method to query DB for completed/failed downloads
@@ -258,9 +269,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 46 | Created extension/background.js service worker with WebSocket connection, auto-reconnect logic (5s interval), context menu for 'Download with NAS', badge status indicator, download state management, message handling for popup/options communication, and API methods for pause/resume/cancel operations. |
 | 47 | Created extension/popup.html + popup.js with compact popup UI (380px width): connection status, add download form, downloads list with progress bars and status indicators, pause/resume/cancel controls, empty/not-configured states, and links to open web UI and settings. Matches web UI design system. |
 | 48 | Created HTML-based icon generator (extension/generate-icons.html) that generates 16x16, 48x48, and 128x128 PNG icons with gradient background and download arrow symbol. Includes instructions in extension/icons/README.md for generating and installing placeholder icons. |
+| 48.01 | Fixed Chrome extension popup bugs: Added download speed display (formatSpeed function), fixed progress to access nested progress object (progress.downloaded_bytes/total_bytes instead of direct properties), fixed pause/resume buttons to use PATCH /api/downloads/id with action body instead of non-existent /pause and /resume endpoints, added 1s linear transition to progress bar for smooth animation. |
 <!-- CONTEXT-END -->
 
 ---

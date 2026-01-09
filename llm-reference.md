@@ -55,6 +55,7 @@ Historical steps that have been archived from the main context document.
 | 39 | Added error message display in UI for failed downloads. Shows error text with warning icon below URL, 'Failed' status button, and toast notifications when downloads fail. Fixed speed indicator to show 0 when download stalls (no bytes for 3+ seconds). Tested DNS failures (handled correctly with error messages), connection drops (resume automatically), and verified 300s socket read timeout is configured. Added exclamation-triangle icon to icon set. |
 | 44 | Created extension/manifest.json with Manifest V3 config: storage/contextMenus/activeTab permissions, host_permissions for all URLs, background service worker, popup action, options page, and icon references for 16/48/128px sizes. |
 | 45 | Created extension/options.html + options.js with server URL and API key configuration form. Includes connection testing, settings persistence via chrome.storage.sync, real-time connection status indicator, and matches web UI design system (same color palette, spacing, typography tokens). |
+| 46 | Created extension/background.js service worker with WebSocket connection, auto-reconnect logic (5s interval), context menu for 'Download with NAS', badge status indicator, download state management, message handling for popup/options communication, and API methods for pause/resume/cancel operations. |
 <!-- ARCHIVE-END -->
 
 ---

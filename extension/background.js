@@ -288,9 +288,13 @@ async function pauseDownload(id) {
     if (!serverUrl || !apiKey) return;
 
     try {
-        await fetch(`${serverUrl}/api/downloads/${id}/pause`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${apiKey}` }
+        await fetch(`${serverUrl}/api/downloads/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'pause' })
         });
     } catch (error) {
         console.error('Failed to pause download:', error);
@@ -302,9 +306,13 @@ async function resumeDownload(id) {
     if (!serverUrl || !apiKey) return;
 
     try {
-        await fetch(`${serverUrl}/api/downloads/${id}/resume`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${apiKey}` }
+        await fetch(`${serverUrl}/api/downloads/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'resume' })
         });
     } catch (error) {
         console.error('Failed to resume download:', error);
