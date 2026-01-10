@@ -43,6 +43,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderDownloads();
         } else if (message.type === 'connection_status_changed') {
             updateConnectionStatus();
+        } else if (message.type === 'settings_updated') {
+            // If settings modal is open, update the UI with new settings
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal && settingsModal.style.display === 'flex') {
+                const settings = message.settings;
+                if (settings) {
+                    // Update rate limit fields
+                    if (settings.global_rate_limit_bps !== undefined) {
+                        populateRateLimitFields(parseInt(settings.global_rate_limit_bps) || 0);
+                    }
+                    // Update max concurrent
+                    if (settings.max_concurrent_downloads !== undefined) {
+                        const maxConcurrentInput = document.getElementById('maxConcurrentInput');
+                        if (maxConcurrentInput) {
+                            maxConcurrentInput.value = parseInt(settings.max_concurrent_downloads) || 3;
+                        }
+                    }
+                    // Update default folder browser
+                    if (settings.default_download_folder !== undefined) {
+                        const newFolder = settings.default_download_folder || '';
+                        if (settingsFolderPath !== newFolder) {
+                            navigateToSettingsFolder(newFolder);
+                        }
+                    }
+                }
+            }
         }
     });
 });

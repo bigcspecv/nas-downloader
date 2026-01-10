@@ -1688,6 +1688,15 @@ function updateSettingsUI(settings) {
 
     // Update status bar rate limit display
     updateRateLimitDisplay(rateLimitBps);
+
+    // Update default download folder if settings modal is open
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal && settingsModal.classList.contains('active')) {
+        const defaultFolder = settings.default_download_folder || '';
+        if (settingsFolderPath !== defaultFolder) {
+            navigateSettingsFolder(defaultFolder);
+        }
+    }
 }
 
 function updateRateLimitDisplay(rateLimitBps) {
