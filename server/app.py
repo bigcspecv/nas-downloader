@@ -255,33 +255,52 @@ def update_settings():
     if not data:
         return jsonify({'error': 'Request body must be a JSON object'}), 400
 
-    # List of valid setting keys
-    valid_keys = {'global_rate_limit_bps', 'max_concurrent_downloads'}
+    # List of valid setting keys - numeric settings vs string settings
+    numeric_keys = {'global_rate_limit_bps', 'max_concurrent_downloads'}
+    string_keys = {'default_download_folder'}
+    valid_keys = numeric_keys | string_keys
 
     # Validate all keys are allowed
     invalid_keys = set(data.keys()) - valid_keys
     if invalid_keys:
         return jsonify({'error': f'Invalid setting keys: {", ".join(invalid_keys)}'}), 400
 
-    # Validate values (all settings should be numeric strings)
+    # Validate values based on setting type
     for key, value in data.items():
-        # Ensure value is a string and can be converted to int
-        try:
-            if not isinstance(value, (str, int)):
-                return jsonify({'error': f'Setting {key} must be a string or integer'}), 400
+        if key in numeric_keys:
+            # Numeric settings validation
+            try:
+                if not isinstance(value, (str, int)):
+                    return jsonify({'error': f'Setting {key} must be a string or integer'}), 400
 
-            # Convert to int to validate it's numeric
-            int_value = int(value)
+                # Convert to int to validate it's numeric
+                int_value = int(value)
 
-            # Validate specific constraints
-            if key == 'global_rate_limit_bps' and int_value < 0:
-                return jsonify({'error': 'global_rate_limit_bps must be >= 0'}), 400
+                # Validate specific constraints
+                if key == 'global_rate_limit_bps' and int_value < 0:
+                    return jsonify({'error': 'global_rate_limit_bps must be >= 0'}), 400
 
-            if key == 'max_concurrent_downloads' and int_value < 1:
-                return jsonify({'error': 'max_concurrent_downloads must be >= 1'}), 400
+                if key == 'max_concurrent_downloads' and int_value < 1:
+                    return jsonify({'error': 'max_concurrent_downloads must be >= 1'}), 400
 
-        except ValueError:
-            return jsonify({'error': f'Setting {key} must be a valid integer'}), 400
+            except ValueError:
+                return jsonify({'error': f'Setting {key} must be a valid integer'}), 400
+
+        elif key == 'default_download_folder':
+            # String path validation
+            if not isinstance(value, str):
+                return jsonify({'error': 'default_download_folder must be a string'}), 400
+
+            # Empty string is valid (means use DOWNLOAD_PATH root)
+            if value != '':
+                # Validate the path exists and is within DOWNLOAD_PATH
+                target_path = validate_path(value)
+                if target_path is None:
+                    return jsonify({'error': 'Invalid default_download_folder - path traversal detected'}), 400
+                if not os.path.exists(target_path):
+                    return jsonify({'error': 'default_download_folder path does not exist'}), 400
+                if not os.path.isdir(target_path):
+                    return jsonify({'error': 'default_download_folder must be a directory'}), 400
 
     # Update settings in database
     try:
@@ -419,6 +438,20 @@ def create_download():
     folder = data.get('folder', '')
     filename = data.get('filename')
     overwrite = data.get('overwrite', False)
+
+    # If no folder specified, use default_download_folder from settings
+    if not folder:
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'default_download_folder'")
+            row = cursor.fetchone()
+            conn.close()
+            if row and row['value']:
+                folder = row['value']
+        except Exception:
+            # If we can't get the setting, just use empty string (root)
+            pass
 
     # Validate URL format
     if not url or not isinstance(url, str) or url.strip() == '':

@@ -110,9 +110,9 @@ After completing your step, use the llm-tools scripts to update this file with Z
 <!-- Update this IMMEDIATELY when you start working, BEFORE writing any code -->
 
 <!-- IN-PROGRESS-START -->
-**Status:** Not started
-**Working on:** -
-**Files touched:** -
+**Status:** In progress
+**Working on:** Step 50: Add default_download_folder setting to settings table
+**Files touched:** server/db/schema.sql, server/app.py
 <!-- IN-PROGRESS-END -->
 
 ---
@@ -233,39 +233,47 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
 
 ### Phase 12: Finalize
-- [ ] 73. Test full flow (docker-compose up, add download, pause/resume, rate limit)
-- [ ] 74. Test extension (package extension, connect, add download, verify sync)
-- [ ] 75. Create `README.md`
+- [ ] 80. Test full flow (docker-compose up, add download, pause/resume, rate limit)
+- [ ] 81. Test extension (package extension, connect, add download, verify sync)
+- [ ] 82. Create `README.md`
+
+### Phase 12.1: Default Download Folder Setting
+- [ ] 50. Add `default_download_folder` setting to settings table (default empty = use DOWNLOAD_DIR env var)
+- [ ] 51. Update GET/PATCH `/api/settings` to handle `default_download_folder` setting
+- [ ] 52. Add default folder browser UI in web settings modal (reuse existing folder browser component)
+- [ ] 53. Update download creation logic to use default folder when `folder` is empty/not specified
+- [ ] 54. Update Chrome extension settings to show/set default download folder
+- [ ] 55. Test default folder flow: set default, add download without folder, verify correct location
 
 ### Phase 13: Download History - WebUI - Core Infrastructure
-- [ ] 49. Add `load_history` setting to settings table (default '1' = enabled)
-- [ ] 50. Create `get_history_downloads()` method to query DB for completed/failed downloads
-- [ ] 51. Modify `get_downloads()` to merge active (memory) + history (DB query)
-- [ ] 52. Add pagination support: limit (default 50) and offset params
-- [ ] 53. Update WebSocket broadcast to include history based on filter
-- [ ] 54. Test with 100+ downloads to verify performance
-- [ ] 55. Update UI filter tabs to show correct counts including history
-- [ ] 56. Verify real-time updates work smoothly for active downloads
+- [ ] 56. Add `load_history` setting to settings table (default '1' = enabled)
+- [ ] 57. Create `get_history_downloads()` method to query DB for completed/failed downloads
+- [ ] 58. Modify `get_downloads()` to merge active (memory) + history (DB query)
+- [ ] 59. Add pagination support: limit (default 50) and offset params
+- [ ] 60. Update WebSocket broadcast to include history based on filter
+- [ ] 61. Test with 100+ downloads to verify performance
+- [ ] 62. Update UI filter tabs to show correct counts including history
+- [ ] 63. Verify real-time updates work smoothly for active downloads
 
 ### Phase 14: Download History - WebUI - Deletion Management
-- [ ] 57. Create `delete_history_download(id)` method (DB-only, no memory lookup)
-- [ ] 58. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
-- [ ] 59. Verify `delete_file=true/false` query param works for completed downloads
-- [ ] 60. Make delete buttons visible for completed/failed downloads in UI
-- [ ] 61. Add delete confirmation with checkbox "Also delete downloaded file"
-- [ ] 62. Disable pause/resume buttons for completed/failed (show status only)
-- [ ] 63. Broadcast deletion events via WebSocket to all clients
-- [ ] 64. Test deletion with/without file removal across multiple clients
+- [ ] 64. Create `delete_history_download(id)` method (DB-only, no memory lookup)
+- [ ] 65. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
+- [ ] 66. Verify `delete_file=true/false` query param works for completed downloads
+- [ ] 67. Make delete buttons visible for completed/failed downloads in UI
+- [ ] 68. Add delete confirmation with checkbox "Also delete downloaded file"
+- [ ] 69. Disable pause/resume buttons for completed/failed (show status only)
+- [ ] 70. Broadcast deletion events via WebSocket to all clients
+- [ ] 71. Test deletion with/without file removal across multiple clients
 
 ### Phase 15: Download History - WebUI - Bulk Operations
-- [ ] 65. Add POST `/api/downloads/clear-completed` endpoint
-- [ ] 66. Add POST `/api/downloads/clear-failed` endpoint
-- [ ] 67. Add `delete_files=true/false` query param for bulk clear
-- [ ] 68. Add "Clear Completed" / "Clear Failed" buttons to UI toolbar
-- [ ] 69. Show confirmation: "Clear 23 completed downloads?"
-- [ ] 70. Add checkbox to dialog: "Also delete all downloaded files"
-- [ ] 71. Show progress notification: "Clearing downloads... (15/23)"
-- [ ] 72. Broadcast bulk deletion to refresh all connected clients
+- [ ] 72. Add POST `/api/downloads/clear-completed` endpoint
+- [ ] 73. Add POST `/api/downloads/clear-failed` endpoint
+- [ ] 74. Add `delete_files=true/false` query param for bulk clear
+- [ ] 75. Add "Clear Completed" / "Clear Failed" buttons to UI toolbar
+- [ ] 76. Show confirmation: "Clear 23 completed downloads?"
+- [ ] 77. Add checkbox to dialog: "Also delete all downloaded files"
+- [ ] 78. Show progress notification: "Clearing downloads... (15/23)"
+- [ ] 79. Broadcast bulk deletion to refresh all connected clients
 
 
 
@@ -329,10 +337,10 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | Folder browser with breadcrumb navigation and scroll indicator | Provides Save As dialog-like UX with compact breadcrumb showing full path, auto-scrolls to show current location, animated scroll indicator (.../) reveals hidden path segments, uses existing /api/folders endpoints for navigation and creation | 25-29 |
 | Use .ndownload extension for in-progress downloads | Clearly identifies temp files as belonging to nas-downloader, prevents conflicts with browser .download or .crdownload files, and provides visual indication that file is incomplete | 30-32 |
 | Smart filename conflict handling with auto-rename for auto-fills | Auto-filled filenames (from URL) silently rename to unique names when conflicts detected - user sees final name in textbox. User-typed filenames show yellow warning but keep original name. Overwrite dialog appears on submit if conflict exists, allowing intentional overwrites. This prevents accidental overwrites for auto-fills while giving users full control when they manually specify names. | 34.02 |
-| Dual-source pattern for downloads (active + history) | Active downloads loaded into memory for real-time updates (fast), completed/failed downloads queried from DB on-demand (lazy loading). Maintains performance for active downloads while enabling unlimited history viewing without memory overhead. | 49-56 |
-| Lazy loading download history | History only queried when UI filter is 'completed' or 'failed', not on every broadcast. Reduces unnecessary DB queries and WebSocket payload size. Cache results for 1 second to prevent duplicate queries during same broadcast cycle. | 49-56 |
-| Pagination default of 50 items for history | Balances UI performance with user convenience - most users don't need hundreds of completed downloads visible at once, but 50 is enough for recent history. Prevents unbounded memory usage as download history grows. | 52 |
-| Bulk operations continue on file deletion failures | When clearing completed/failed downloads in bulk, continue processing if individual file deletions fail (permission errors, missing files, etc.). Log errors and show summary notification. One failure shouldn't block clearing entire history. | 65-72 |
+| Dual-source pattern for downloads (active + history) | Active downloads loaded into memory for real-time updates (fast), completed/failed downloads queried from DB on-demand (lazy loading). Maintains performance for active downloads while enabling unlimited history viewing without memory overhead. | 56-63 |
+| Lazy loading download history | History only queried when UI filter is 'completed' or 'failed', not on every broadcast. Reduces unnecessary DB queries and WebSocket payload size. Cache results for 1 second to prevent duplicate queries during same broadcast cycle. | 56-63 |
+| Pagination default of 50 items for history | Balances UI performance with user convenience - most users don't need hundreds of completed downloads visible at once, but 50 is enough for recent history. Prevents unbounded memory usage as download history grows. | 59 |
+| Bulk operations continue on file deletion failures | When clearing completed/failed downloads in bulk, continue processing if individual file deletions fail (permission errors, missing files, etc.). Log errors and show summary notification. One failure shouldn't block clearing entire history. | 72-79 |
 | Use download ID for temp file naming instead of filename-based | Enables crash recovery by matching temp files to DB records via ID. Eliminates temp file conflicts since IDs are unique. Simplifies file management logic. | 34.05 |
 | Design token system with CSS custom properties | Centralizes all design values (spacing on 4px scale, typography scale, color palette, border radius, transitions) into CSS variables. Ensures visual consistency across all components, makes global design changes trivial (change one variable instead of hundreds of values), improves maintainability, and provides clear design constraints for future development. Based on industry-standard 4px spacing grid system. | 38 |
 | HTML canvas-based icon generator instead of pre-generated PNGs | Avoids binary files in git, provides easy customization for users, generates proper PNG files on-demand, and includes visual preview. Users can regenerate icons with different designs without needing image editing tools. | 48 |

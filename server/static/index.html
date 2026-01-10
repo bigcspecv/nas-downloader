@@ -277,6 +277,30 @@
                     <input type="number" id="maxConcurrent" placeholder="3" min="1" value="3">
                     <small>Maximum number of simultaneous downloads</small>
                 </div>
+                <div class="form-field">
+                    <label>Default Download Folder</label>
+                    <div class="folder-browser" id="settingsFolderBrowser">
+                        <div class="folder-browser-header">
+                            <div class="breadcrumb-wrapper">
+                                <div class="breadcrumb-scroll-indicator" id="settingsBreadcrumbScrollIndicator">.../</div>
+                                <div class="breadcrumb" id="settingsFolderBreadcrumb">
+                                    <span class="breadcrumb-item" onclick="navigateSettingsFolder('')">
+                                        <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                                        Downloads
+                                    </span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-icon-small" onclick="createNewSettingsFolder()" title="New Folder">
+                                <span class="icon-placeholder" data-icon="folder-plus" data-class="icon icon-sm"></span>
+                            </button>
+                        </div>
+                        <div class="folder-list" id="settingsFolderList">
+                            <div class="folder-list-loading">Loading folders...</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="defaultDownloadFolder">
+                    <small>Downloads will be saved here when no folder is selected</small>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="closeSettingsModal()">Close</button>
                     <button type="button" class="btn-primary" onclick="saveSettings()">Save Settings</button>

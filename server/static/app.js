@@ -1461,6 +1461,184 @@ async function createNewFolder() {
 }
 
 // ============================================================================
+// Settings Folder Browser
+// ============================================================================
+
+let settingsFolderPath = '';
+
+async function navigateSettingsFolder(path) {
+    settingsFolderPath = path;
+
+    const folderListEl = document.getElementById('settingsFolderList');
+    const hiddenInput = document.getElementById('defaultDownloadFolder');
+
+    // Show loading state
+    folderListEl.innerHTML = '<div class="folder-list-loading">Loading folders...</div>';
+
+    try {
+        const endpoint = path ? `/folders?path=${encodeURIComponent(path)}` : '/folders';
+        const data = await apiCall(endpoint);
+
+        // Update breadcrumb
+        updateSettingsBreadcrumb(path);
+
+        // Update hidden input
+        hiddenInput.value = path;
+
+        // Render folder list
+        renderSettingsFolderList(data.folders, path);
+    } catch (error) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">Failed to load folders</div>';
+        showNotification('error', 'Failed to Load Folders', error.message);
+    }
+}
+
+function updateSettingsBreadcrumb(path) {
+    const breadcrumbEl = document.getElementById('settingsFolderBreadcrumb');
+
+    if (!path) {
+        // Root directory
+        breadcrumbEl.innerHTML = `
+            <span class="breadcrumb-item" onclick="navigateSettingsFolder('')">
+                <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                Downloads
+            </span>
+        `;
+    } else {
+        // Build breadcrumb from path parts
+        const parts = path.split('/').filter(p => p);
+        let html = `
+            <span class="breadcrumb-item" onclick="navigateSettingsFolder('')">
+                <span class="icon-placeholder" data-icon="home" data-class="icon icon-sm"></span>
+                Downloads
+            </span>
+        `;
+
+        let currentPath = '';
+        parts.forEach((part) => {
+            currentPath += (currentPath ? '/' : '') + part;
+            const pathForClick = currentPath;
+            html += `<span class="breadcrumb-separator">/</span>`;
+            html += `<span class="breadcrumb-item" onclick="navigateSettingsFolder('${escapeHtml(pathForClick)}')">${escapeHtml(part)}</span>`;
+        });
+
+        breadcrumbEl.innerHTML = html;
+    }
+
+    // Re-initialize icons in breadcrumb
+    initializeIcons(breadcrumbEl);
+
+    // Scroll to the right to show current folder
+    setTimeout(() => {
+        breadcrumbEl.scrollLeft = breadcrumbEl.scrollWidth;
+        updateSettingsBreadcrumbScrollIndicator();
+    }, 0);
+
+    // Add scroll listener to update indicator
+    breadcrumbEl.removeEventListener('scroll', updateSettingsBreadcrumbScrollIndicator);
+    breadcrumbEl.addEventListener('scroll', updateSettingsBreadcrumbScrollIndicator);
+}
+
+function updateSettingsBreadcrumbScrollIndicator() {
+    const breadcrumbEl = document.getElementById('settingsFolderBreadcrumb');
+    const indicator = document.getElementById('settingsBreadcrumbScrollIndicator');
+
+    if (!breadcrumbEl || !indicator) return;
+
+    // Show indicator if scrolled to the right (scrollLeft > 0)
+    if (breadcrumbEl.scrollLeft > 5) {
+        indicator.classList.add('visible');
+    } else {
+        indicator.classList.remove('visible');
+    }
+}
+
+function renderSettingsFolderList(folders, currentPath) {
+    const folderListEl = document.getElementById('settingsFolderList');
+
+    if (folders.length === 0 && !currentPath) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">No folders yet. Click "New Folder" to create one.</div>';
+        return;
+    }
+
+    let html = '';
+
+    // Add parent folder option if not at root
+    if (currentPath) {
+        const parentPath = currentPath.split('/').slice(0, -1).join('/');
+        html += `
+            <div class="folder-item parent-folder" onclick="navigateSettingsFolder('${escapeHtml(parentPath)}')">
+                <span class="icon-placeholder folder-item-icon" data-icon="arrow-up" data-class="icon icon-sm"></span>
+                <span class="folder-item-name">..</span>
+            </div>
+        `;
+    }
+
+    // Add folders
+    folders.forEach(folder => {
+        html += `
+            <div class="folder-item" onclick="selectSettingsFolder('${escapeHtml(folder.path)}')">
+                <span class="icon-placeholder folder-item-icon" data-icon="folder" data-class="icon icon-sm"></span>
+                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+            </div>
+        `;
+    });
+
+    if (folders.length === 0 && currentPath) {
+        html += '<div class="folder-list-empty">No subfolders</div>';
+    }
+
+    folderListEl.innerHTML = html;
+
+    // Re-initialize icons in folder list
+    initializeIcons(folderListEl);
+}
+
+function selectSettingsFolder(path) {
+    // Double-click behavior: navigate into the folder
+    navigateSettingsFolder(path);
+}
+
+async function createNewSettingsFolder() {
+    const folderName = await showPrompt(
+        'Enter the name for the new folder:',
+        'New Folder',
+        '',
+        'Folder name'
+    );
+
+    if (!folderName) {
+        return; // User cancelled
+    }
+
+    // Validate folder name
+    if (folderName.includes('/') || folderName.includes('\\')) {
+        showNotification('error', 'Invalid Folder Name', 'Folder name cannot contain / or \\');
+        return;
+    }
+
+    if (folderName.trim() === '') {
+        showNotification('error', 'Invalid Folder Name', 'Folder name cannot be empty');
+        return;
+    }
+
+    // Construct new folder path
+    const newFolderPath = settingsFolderPath
+        ? `${settingsFolderPath}/${folderName}`
+        : folderName;
+
+    try {
+        await apiCall('/folders', 'POST', { path: newFolderPath });
+        showNotification('success', 'Folder Created', `Created folder: ${folderName}`);
+
+        // Reload the current folder view
+        navigateSettingsFolder(settingsFolderPath);
+    } catch (error) {
+        showNotification('error', 'Failed to Create Folder', error.message);
+    }
+}
+
+// ============================================================================
 // Settings Management
 // ============================================================================
 
@@ -1468,6 +1646,10 @@ async function loadSettings() {
     try {
         const settings = await apiCall('/settings');
         updateSettingsUI(settings);
+
+        // Load the default folder browser to the saved path
+        const defaultFolder = settings.default_download_folder || '';
+        navigateSettingsFolder(defaultFolder);
     } catch (error) {
         console.error('Failed to load settings:', error);
         showNotification('error', 'Failed to Load Settings', error.message);
@@ -1523,6 +1705,7 @@ async function saveSettings() {
     const rateLimitValue = document.getElementById('rateLimit').value.trim();
     const rateLimitUnit = parseInt(document.getElementById('rateLimitUnit').value);
     const maxConcurrent = document.getElementById('maxConcurrent').value.trim();
+    const defaultDownloadFolder = document.getElementById('defaultDownloadFolder').value;
 
     try {
         // Validate rate limit is a valid non-negative integer
@@ -1543,7 +1726,8 @@ async function saveSettings() {
 
         await apiCall('/settings', 'PATCH', {
             global_rate_limit_bps: rateLimitBps.toString(),
-            max_concurrent_downloads: maxConcurrent
+            max_concurrent_downloads: maxConcurrent,
+            default_download_folder: defaultDownloadFolder
         });
 
         showNotification('success', 'Settings Saved', 'Your settings have been updated');

@@ -19,4 +19,5 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Initialize default settings (only if not already present)
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('global_rate_limit_bps', '0'),
-    ('max_concurrent_downloads', '3');
+    ('max_concurrent_downloads', '3'),
+    ('default_download_folder', '');

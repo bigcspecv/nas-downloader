@@ -337,7 +337,12 @@ class DownloadManager:
         cursor = conn.cursor()
 
         cursor.execute("SELECT key, value FROM settings")
-        settings = {row['key']: int(row['value']) for row in cursor.fetchall()}
+        settings = {}
+        for row in cursor.fetchall():
+            try:
+                settings[row['key']] = int(row['value']) if row['value'] else 0
+            except ValueError:
+                settings[row['key']] = 0
 
         self.global_rate_limit_bps = settings.get('global_rate_limit_bps', 0)
         self.max_concurrent_downloads = settings.get('max_concurrent_downloads', 3)

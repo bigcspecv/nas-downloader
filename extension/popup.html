@@ -768,6 +768,25 @@
             flex: none;
         }
 
+        /* Compact folder browser for settings */
+        .folder-browser-compact {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            overflow: hidden;
+        }
+
+        .folder-browser-compact .breadcrumb {
+            padding: var(--space-2) var(--space-3);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .folder-list-compact {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
         /* Multi-select mode */
         .download-item.selectable {
             cursor: pointer;
@@ -1088,6 +1107,19 @@
                     <label class="setting-label">Max Concurrent Downloads</label>
                     <p class="setting-description">Number of simultaneous downloads (1-10)</p>
                     <input type="text" id="maxConcurrentInput" placeholder="3" pattern="[0-9]*" inputmode="numeric" value="3" class="setting-input setting-input-short">
+                </div>
+                <!-- Default Download Folder Setting -->
+                <div class="setting-group">
+                    <label class="setting-label">Default Download Folder</label>
+                    <p class="setting-description">Downloads go here when no folder is selected</p>
+                    <div class="folder-browser-compact">
+                        <div class="breadcrumb" id="settingsFolderBreadcrumb">
+                            <span class="breadcrumb-item" data-path="">Downloads</span>
+                        </div>
+                        <div class="folder-list folder-list-compact" id="settingsFolderList">
+                            <div class="folder-list-loading">Loading folders...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer-row">

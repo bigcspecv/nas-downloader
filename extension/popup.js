@@ -18,6 +18,9 @@ let selectedDownloads = new Set();
 // Current server settings
 let currentSettings = null;
 
+// Settings folder browser state
+let settingsFolderPath = '';
+
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
     await checkConfiguration();
@@ -231,6 +234,28 @@ function setupEventListeners() {
     if (maxConcurrentInput) {
         maxConcurrentInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+    }
+
+    // Settings folder browser - breadcrumb clicks
+    const settingsFolderBreadcrumb = document.getElementById('settingsFolderBreadcrumb');
+    if (settingsFolderBreadcrumb) {
+        settingsFolderBreadcrumb.addEventListener('click', (e) => {
+            const breadcrumbItem = e.target.closest('.breadcrumb-item');
+            if (breadcrumbItem && breadcrumbItem.dataset.path !== undefined) {
+                navigateToSettingsFolder(breadcrumbItem.dataset.path);
+            }
+        });
+    }
+
+    // Settings folder browser - folder list clicks
+    const settingsFolderList = document.getElementById('settingsFolderList');
+    if (settingsFolderList) {
+        settingsFolderList.addEventListener('click', (e) => {
+            const folderItem = e.target.closest('.folder-item');
+            if (folderItem && folderItem.dataset.path !== undefined) {
+                navigateToSettingsFolder(folderItem.dataset.path);
+            }
         });
     }
 }
@@ -1056,6 +1081,112 @@ async function openSettingsModal() {
     document.getElementById('settingsModal').style.display = 'flex';
 }
 
+// Navigate to a folder in settings browser
+async function navigateToSettingsFolder(path) {
+    settingsFolderPath = path;
+
+    const folderListEl = document.getElementById('settingsFolderList');
+
+    // Show loading state
+    folderListEl.innerHTML = '<div class="folder-list-loading">Loading folders...</div>';
+
+    try {
+        const endpoint = path ? `/api/folders?path=${encodeURIComponent(path)}` : '/api/folders';
+        const response = await fetch(`${serverUrl}${endpoint}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Update breadcrumb
+        renderSettingsFolderBreadcrumb(path);
+
+        // Render folder list
+        renderSettingsFolderList(data.folders || [], path);
+    } catch (error) {
+        console.error('Failed to load settings folders:', error);
+        folderListEl.innerHTML = '<div class="folder-list-empty">Failed to load folders</div>';
+    }
+}
+
+// Render settings folder breadcrumb
+function renderSettingsFolderBreadcrumb(path) {
+    const breadcrumbEl = document.getElementById('settingsFolderBreadcrumb');
+
+    if (!path) {
+        // Root directory
+        breadcrumbEl.innerHTML = '<span class="breadcrumb-item" data-path="">Downloads</span>';
+    } else {
+        // Build breadcrumb from path parts
+        const parts = path.split('/').filter(p => p);
+        let html = '<span class="breadcrumb-item" data-path="">Downloads</span>';
+
+        let currentPath = '';
+        parts.forEach((part) => {
+            currentPath += (currentPath ? '/' : '') + part;
+            const pathForClick = currentPath;
+            html += '<span class="breadcrumb-separator">/</span>';
+            html += `<span class="breadcrumb-item" data-path="${escapeHtml(pathForClick)}">${escapeHtml(part)}</span>`;
+        });
+
+        breadcrumbEl.innerHTML = html;
+    }
+
+    // Scroll to the right to show current folder
+    setTimeout(() => {
+        breadcrumbEl.scrollLeft = breadcrumbEl.scrollWidth;
+    }, 0);
+}
+
+// Render settings folder list
+function renderSettingsFolderList(folders, currentPath) {
+    const folderListEl = document.getElementById('settingsFolderList');
+
+    if (folders.length === 0 && !currentPath) {
+        folderListEl.innerHTML = '<div class="folder-list-empty">No folders (using root)</div>';
+        return;
+    }
+
+    let html = '';
+
+    // Add parent folder option if not at root
+    if (currentPath) {
+        const parentPath = currentPath.split('/').slice(0, -1).join('/');
+        html += `
+            <div class="folder-item parent-folder" data-path="${escapeHtml(parentPath)}">
+                <svg class="folder-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 15l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="folder-item-name">..</span>
+            </div>
+        `;
+    }
+
+    // Add folders
+    folders.forEach(folder => {
+        html += `
+            <div class="folder-item" data-path="${escapeHtml(folder.path)}">
+                <svg class="folder-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2h-8L9 5H5c-1.1 0-2 .9-2 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                </svg>
+                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+            </div>
+        `;
+    });
+
+    if (folders.length === 0 && currentPath) {
+        html += '<div class="folder-list-empty">No subfolders</div>';
+    }
+
+    folderListEl.innerHTML = html;
+}
+
 // Close settings modal
 function closeSettingsModal() {
     document.getElementById('settingsModal').style.display = 'none';
@@ -1092,6 +1223,10 @@ async function loadServerSettings() {
             maxConcurrentInput.value = maxConcurrent;
         }
 
+        // Load default download folder
+        const defaultFolder = currentSettings.default_download_folder || '';
+        await navigateToSettingsFolder(defaultFolder);
+
     } catch (error) {
         console.error('Failed to load settings:', error);
         // Set defaults
@@ -1100,6 +1235,8 @@ async function loadServerSettings() {
         if (maxConcurrentInput) {
             maxConcurrentInput.value = 3;
         }
+        // Load root folder as default
+        await navigateToSettingsFolder('');
     }
 }
 
@@ -1176,7 +1313,8 @@ async function saveServerSettings() {
             },
             body: JSON.stringify({
                 global_rate_limit_bps: rateLimitBps.toString(),
-                max_concurrent_downloads: maxConcurrent.toString()
+                max_concurrent_downloads: maxConcurrent.toString(),
+                default_download_folder: settingsFolderPath
             })
         });
 
