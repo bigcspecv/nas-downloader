@@ -231,6 +231,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.02.05 Add ability to delete multiple downloads by selecting them (multi-select with checkboxes on main popup) checkboxes need to match overall extension styling
    - [x] 48.02.06 Add ability to set the server's global download speed in settings on the main popup by clicking on the global download speed in the footer and bringing up a modal
    - [x] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
+   - [x] 48.02.08 Implement filename parsing in the browser extension just like we did in the webui when entering a url (strip urlenc values, etc.)
 
 ### Phase 12: Finalize
 - [ ] 80. Test full flow (docker-compose up, add download, pause/resume, rate limit)
@@ -294,9 +295,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 34.07-34.09 | Fixed three Phase 8 bugs: (1) 34.07 - _get_unique_filename now checks in-progress downloads for filename conflicts in same folder, preventing collisions when downloads complete. (2) 34.08 - Added set_max_concurrent_downloads() and enforce_concurrency_limit() methods to pause excess downloads when limit is reduced. (3) 34.09 - Converted webui download rows to card layout matching extension style: card header with checkbox/filename/icon buttons, 4px progress bar, info row with status badge/size/speed. Updated skeleton loaders and responsive CSS. |
 | ext+web | Added animated toolbar icon to Chrome extension (downward-moving arrow overlay using OffscreenCanvas when downloads active, restores static icon when idle). Fixed web UI progress bar transitions by rewriting renderDownloads() to update existing DOM elements in place instead of recreating innerHTML - preserves elements so CSS transition: width 1000ms works smoothly. |
 | 56-61 | Implemented TLS fingerprint impersonation using curl_cffi with Chrome 120 impersonation. Added Chrome-specific headers (Sec-CH-UA, Sec-Fetch-*). Added cookie passthrough from Chrome extension to server - extension captures cookies via chrome.cookies.getAll() and sends with download request. Server includes cookies in download headers. Switched Dockerfile from Alpine to Debian slim for curl_cffi compatibility. |
+| 48.02.08 | Added filename parsing to Chrome extension: parseFilenameFromUrl() extracts and decodes filename from URL (strips query params, decodes %XX encoding). Added filename input field in Add Download modal. Auto-fills on URL change, tracks user modifications. Passes filename through background.js to server API. |
 <!-- CONTEXT-END -->
 
 ---

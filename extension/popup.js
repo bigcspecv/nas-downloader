@@ -193,10 +193,23 @@ function setupEventListeners() {
         createFolderBtn.addEventListener('click', createNewFolderInPicker);
     }
 
-    // Enter key in URL input submits the form
+    // URL input - auto-fill filename on change and submit on Enter
     const downloadUrlInput = document.getElementById('downloadUrlInput');
     if (downloadUrlInput) {
+        downloadUrlInput.addEventListener('input', onDownloadUrlChange);
+        downloadUrlInput.addEventListener('change', onDownloadUrlChange);
         downloadUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmFolderSelection();
+            }
+        });
+    }
+
+    // Filename input - mark as user-modified when edited
+    const downloadFilenameInput = document.getElementById('downloadFilenameInput');
+    if (downloadFilenameInput) {
+        downloadFilenameInput.addEventListener('input', onFilenameInputChange);
+        downloadFilenameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 confirmFolderSelection();
             }
@@ -675,6 +688,62 @@ async function saveInterceptSetting() {
     }
 }
 
+// ============ Filename Parsing ============
+
+// Parse filename from URL (strip query params, decode URL encoding)
+function parseFilenameFromUrl(url) {
+    try {
+        // Parse the URL
+        const urlObj = new URL(url);
+
+        // Get the pathname (automatically strips query params and fragments)
+        let pathname = urlObj.pathname;
+
+        // Extract the filename (last segment of the path)
+        let filename = pathname.split('/').pop();
+
+        // If filename is empty (e.g., URL ends with /), return empty
+        if (!filename) {
+            return '';
+        }
+
+        // Decode URL-encoded characters (e.g., %20 -> space, %2B -> +)
+        filename = decodeURIComponent(filename);
+
+        return filename;
+    } catch (error) {
+        // Invalid URL, return empty string
+        console.error('Error parsing filename from URL:', error);
+        return '';
+    }
+}
+
+// Handle URL input change - auto-fill filename
+function onDownloadUrlChange() {
+    const urlInput = document.getElementById('downloadUrlInput');
+    const filenameInput = document.getElementById('downloadFilenameInput');
+
+    if (!urlInput || !filenameInput) return;
+
+    const url = urlInput.value.trim();
+
+    // Only auto-fill if filename field is empty or was auto-filled (not user-modified)
+    if (url && !filenameInput.dataset.userModified) {
+        const parsedFilename = parseFilenameFromUrl(url);
+        filenameInput.value = parsedFilename;
+        filenameInput.placeholder = parsedFilename ? parsedFilename : 'Auto-detected from URL';
+    }
+}
+
+// Handle filename input change - mark as user-modified
+function onFilenameInputChange() {
+    const filenameInput = document.getElementById('downloadFilenameInput');
+    if (filenameInput) {
+        // Mark as user-modified if they typed something
+        filenameInput.dataset.userModified = 'true';
+    }
+}
+
 // ============ Folder Picker Functions ============
 
 // Check for pending download from context menu
@@ -700,16 +769,35 @@ async function openFolderPicker(url = '') {
 
     // Set URL in the input field
     const urlInput = document.getElementById('downloadUrlInput');
+    const filenameInput = document.getElementById('downloadFilenameInput');
+
     if (urlInput) {
         urlInput.value = url;
-        // Focus the input if no URL provided
-        if (!url) {
-            setTimeout(() => urlInput.focus(), 100);
+    }
+
+    // Reset and set filename field
+    if (filenameInput) {
+        // Reset user-modified flag
+        delete filenameInput.dataset.userModified;
+
+        // Parse filename from URL if provided
+        if (url) {
+            const parsedFilename = parseFilenameFromUrl(url);
+            filenameInput.value = parsedFilename;
+            filenameInput.placeholder = parsedFilename ? parsedFilename : 'Auto-detected from URL';
+        } else {
+            filenameInput.value = '';
+            filenameInput.placeholder = 'Auto-detected from URL';
         }
     }
 
     // Show modal
     document.getElementById('folderPickerModal').style.display = 'flex';
+
+    // Focus the URL input if no URL provided
+    if (!url && urlInput) {
+        setTimeout(() => urlInput.focus(), 100);
+    }
 
     // Load root folders
     await navigateToFolderInPicker('');
@@ -720,6 +808,14 @@ function closeFolderPicker() {
     document.getElementById('folderPickerModal').style.display = 'none';
     pendingDownloadUrl = null;
     currentFolderPath = '';
+
+    // Reset filename field
+    const filenameInput = document.getElementById('downloadFilenameInput');
+    if (filenameInput) {
+        filenameInput.value = '';
+        filenameInput.placeholder = 'Auto-detected from URL';
+        delete filenameInput.dataset.userModified;
+    }
 }
 
 // Navigate to a folder in picker
@@ -879,7 +975,9 @@ async function createNewFolderInPicker() {
 async function confirmFolderSelection() {
     // Get URL from input field
     const urlInput = document.getElementById('downloadUrlInput');
+    const filenameInput = document.getElementById('downloadFilenameInput');
     const url = urlInput ? urlInput.value.trim() : '';
+    const filename = filenameInput ? filenameInput.value.trim() : '';
 
     if (!url) {
         alert('Please enter a download URL');
@@ -897,7 +995,8 @@ async function confirmFolderSelection() {
         await chrome.runtime.sendMessage({
             type: 'add_download',
             url: url,
-            folder: currentFolderPath
+            folder: currentFolderPath,
+            filename: filename
         });
 
         // Close modal

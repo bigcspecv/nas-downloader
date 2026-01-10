@@ -8,6 +8,24 @@ let downloads = [];
 let globalPaused = false;
 let interceptEnabled = true; // Default to enabled
 
+// Parse filename from URL (strip query params, decode URL encoding)
+function parseFilenameFromUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        let pathname = urlObj.pathname;
+        let filename = pathname.split('/').pop();
+        if (!filename) {
+            return '';
+        }
+        // Decode URL-encoded characters (e.g., %20 -> space)
+        filename = decodeURIComponent(filename);
+        return filename;
+    } catch (error) {
+        console.error('Error parsing filename from URL:', error);
+        return '';
+    }
+}
+
 // Icon animation state
 let animationInterval = null;
 let animationFrame = 0;
@@ -57,8 +75,12 @@ chrome.downloads.onCreated.addListener((downloadItem) => {
         });
     });
 
-    // Send to our server instead
-    addDownload(downloadItem.url);
+    // Send to our server instead with parsed filename
+    // Use browser's suggested filename if available, otherwise parse from URL
+    const filename = downloadItem.filename
+        ? downloadItem.filename.split(/[/\\]/).pop()  // Extract just filename from path
+        : parseFilenameFromUrl(downloadItem.url);
+    addDownload(downloadItem.url, '', filename);
 });
 
 // Create context menu for right-click download
@@ -94,8 +116,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!url) return;
 
     if (info.menuItemId === 'nas-download') {
-        // Direct download to default folder
-        addDownload(url);
+        // Direct download to default folder with parsed filename
+        const filename = parseFilenameFromUrl(url);
+        addDownload(url, '', filename);
     } else if (info.menuItemId === 'nas-download-to') {
         // Store URL and open popup for folder selection
         try {
@@ -327,7 +350,7 @@ async function getCookiesForUrl(url) {
 }
 
 // Add download via API
-async function addDownload(url, folder = '') {
+async function addDownload(url, folder = '', filename = '') {
     if (!serverUrl || !apiKey) {
         console.error('Cannot add download: not configured');
         showNotification('Not configured', 'Please configure server settings first');
@@ -338,18 +361,25 @@ async function addDownload(url, folder = '') {
         // Get cookies from browser for this URL's domain
         const cookies = await getCookiesForUrl(url);
 
+        const requestBody = {
+            url: url,
+            folder: folder || '',  // Use provided folder or default
+            user_agent: navigator.userAgent,  // Pass browser's User-Agent
+            cookies: cookies  // Pass browser cookies for this domain
+        };
+
+        // Include filename if provided
+        if (filename) {
+            requestBody.filename = filename;
+        }
+
         const response = await fetch(`${serverUrl}/api/downloads`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                url: url,
-                folder: folder || '',  // Use provided folder or default
-                user_agent: navigator.userAgent,  // Pass browser's User-Agent
-                cookies: cookies  // Pass browser cookies for this domain
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (response.status === 401) {
@@ -414,7 +444,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ downloads: downloads, globalPaused: globalPaused });
 
     } else if (message.type === 'add_download') {
-        addDownload(message.url, message.folder);
+        addDownload(message.url, message.folder, message.filename);
         sendResponse({ success: true });
 
     } else if (message.type === 'pause_download') {
