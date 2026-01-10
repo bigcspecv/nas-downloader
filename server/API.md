@@ -15,7 +15,7 @@ Requests without valid authentication receive a `401 Unauthorized` response.
 ## Base URL
 
 ```
-http://your-server:5000/api
+http://your-server:6199/api
 ```
 
 ---
@@ -340,8 +340,8 @@ Real-time updates are available via WebSocket connection.
 ### Connection
 
 ```
-ws://your-server:5000/ws?api_key=YOUR_API_KEY
-wss://your-server:5000/ws?api_key=YOUR_API_KEY  (with TLS)
+ws://your-server:6199/ws?api_key=YOUR_API_KEY
+wss://your-server:6199/ws?api_key=YOUR_API_KEY  (with TLS)
 ```
 
 Authentication is done via the `api_key` query parameter.
@@ -349,7 +349,7 @@ Authentication is done via the `api_key` query parameter.
 ### Connection Example (JavaScript)
 
 ```javascript
-const ws = new WebSocket('ws://localhost:5000/ws?api_key=your-api-key');
+const ws = new WebSocket('ws://localhost:6199/ws?api_key=your-api-key');
 
 ws.onopen = () => {
   console.log('Connected to server');
@@ -516,7 +516,7 @@ All error responses follow this format:
 
 ### Add a download
 ```bash
-curl -X POST http://localhost:5000/api/downloads \
+curl -X POST http://localhost:6199/api/downloads \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com/file.zip"}'
@@ -524,7 +524,7 @@ curl -X POST http://localhost:5000/api/downloads \
 
 ### Pause a download
 ```bash
-curl -X PATCH http://localhost:5000/api/downloads/download-id-here \
+curl -X PATCH http://localhost:6199/api/downloads/download-id-here \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"action": "pause"}'
@@ -532,7 +532,7 @@ curl -X PATCH http://localhost:5000/api/downloads/download-id-here \
 
 ### Set rate limit to 5 MB/s
 ```bash
-curl -X PATCH http://localhost:5000/api/settings \
+curl -X PATCH http://localhost:6199/api/settings \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"global_rate_limit_bps": "5242880"}'
@@ -540,13 +540,13 @@ curl -X PATCH http://localhost:5000/api/settings \
 
 ### List all downloads
 ```bash
-curl http://localhost:5000/api/downloads \
+curl http://localhost:6199/api/downloads \
   -H "Authorization: Bearer your-api-key"
 ```
 
 ### Create a folder
 ```bash
-curl -X POST http://localhost:5000/api/folders \
+curl -X POST http://localhost:6199/api/folders \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"path": "movies/2024"}'

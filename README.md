@@ -43,7 +43,7 @@ A self-hosted download manager designed for NAS devices and home servers. Manage
    docker-compose up -d
    ```
 
-5. Access the web UI at `http://localhost:5000`
+5. Access the web UI at `http://localhost:6199`
 
 ### Local Development
 
@@ -70,7 +70,7 @@ A self-hosted download manager designed for NAS devices and home servers. Manage
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_KEY` | (required) | Authentication key for API and WebSocket |
-| `PORT` | `5000` | Server port |
+| `PORT` | `6199` | Server port |
 | `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
 | `DOWNLOAD_PATH` | `/downloads` | Where to save downloaded files |
 | `DATA_PATH` | `/app/data` | Where to store the SQLite database |
@@ -151,7 +151,7 @@ The Chrome extension lets you send downloads to your server from any webpage.
 
 1. Click the extension icon
 2. Open settings (gear icon)
-3. Enter your server URL (e.g., `http://192.168.1.100:5000`)
+3. Enter your server URL (e.g., `http://192.168.1.100:6199`)
 4. Enter your API key
 
 ### Usage

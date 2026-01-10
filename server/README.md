@@ -33,7 +33,7 @@ The backend server for nas-downloader, providing a REST API, WebSocket real-time
      nas-downloader:
        image: ghcr.io/bigcspecv/nas-downloader:latest
        ports:
-         - "5000:5000"
+         - "6199:6199"
        volumes:
          - ./downloads:/downloads
          - ./data:/app/data
@@ -47,7 +47,7 @@ The backend server for nas-downloader, providing a REST API, WebSocket real-time
    docker-compose up -d
    ```
 
-4. Access the web UI at `http://localhost:5000`
+4. Access the web UI at `http://localhost:6199`
 
 #### Synology Container Manager (DSM 7.2+)
 
@@ -79,7 +79,7 @@ For Synology NAS users running DSM 7.2 or later with Container Manager:
        image: ghcr.io/bigcspecv/nas-downloader:latest
        container_name: nas-downloader
        ports:
-         - "5000:5000"
+         - "6199:6199"
        volumes:
          - /volume1/docker/nas-downloader/downloads:/downloads
          - /volume1/docker/nas-downloader/data:/app/data
@@ -94,12 +94,12 @@ For Synology NAS users running DSM 7.2 or later with Container Manager:
 
 6. When prompted, select **Start the project** to deploy the container.
 
-7. Access the web UI at `http://your-nas-ip:5000`
+7. Access the web UI at `http://your-nas-ip:6199`
 
 **Tips for Synology users:**
 - To view logs, go to **Container Manager > Project > nas-downloader > Container** and click the container name
 - For CLI access, enable SSH in **Control Panel > Terminal & SNMP**, then use `sudo docker logs nas-downloader`
-- If port 5000 conflicts with another service, change the left side of the port mapping (e.g., `5001:5000`)
+- If port 6199 conflicts with another service, change the left side of the port mapping (e.g., `6200:6199`)
 
 #### Building from Source
 
@@ -116,7 +116,7 @@ docker-compose up -d --build
 ```bash
 docker run -d \
   --name nas-downloader \
-  -p 5000:5000 \
+  -p 6199:6199 \
   -v /path/to/downloads:/downloads \
   -v /path/to/data:/app/data \
   -e API_KEY=your-secure-api-key-here \
@@ -138,7 +138,7 @@ All configuration is done via environment variables.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `API_KEY` | Yes | - | Authentication key for API and WebSocket connections |
-| `PORT` | No | `5000` | Server port |
+| `PORT` | No | `6199` | Server port |
 | `ALLOWED_ORIGINS` | No | `*` | CORS allowed origins (comma-separated for multiple) |
 | `DOWNLOAD_PATH` | No | `/downloads` | Base directory for downloaded files |
 | `DATA_PATH` | No | `/app/data` | Directory for SQLite database |
@@ -152,7 +152,7 @@ All configuration is done via environment variables.
 API_KEY=my-super-secret-key-12345
 
 # Optional - uncomment to customize
-# PORT=5000
+# PORT=6199
 # ALLOWED_ORIGINS=https://mydomain.com,https://app.mydomain.com
 # DOWNLOAD_PATH=/downloads
 # DATA_PATH=/app/data
@@ -234,7 +234,7 @@ server {
     ssl_certificate_key /path/to/key.pem;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:6199;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -242,7 +242,7 @@ server {
     }
 
     location /ws {
-        proxy_pass http://localhost:5000/ws;
+        proxy_pass http://localhost:6199/ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -263,7 +263,7 @@ services:
       - "traefik.http.routers.nas-downloader.rule=Host(`nas.yourdomain.com`)"
       - "traefik.http.routers.nas-downloader.entrypoints=websecure"
       - "traefik.http.routers.nas-downloader.tls.certresolver=letsencrypt"
-      - "traefik.http.services.nas-downloader.loadbalancer.server.port=5000"
+      - "traefik.http.services.nas-downloader.loadbalancer.server.port=6199"
 ```
 
 ## Troubleshooting

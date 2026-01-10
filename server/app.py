@@ -19,7 +19,7 @@ PROJECT_ROOT = os.path.dirname(SERVER_DIR)
 
 # Configuration
 API_KEY = os.getenv('API_KEY', 'your-secret-key-here')
-PORT = int(os.getenv('PORT', 5000))
+PORT = int(os.getenv('PORT', 6199))
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*')
 
 # Resolve paths to absolute paths

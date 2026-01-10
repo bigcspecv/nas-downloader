@@ -16,7 +16,7 @@ COPY . .
 RUN mkdir -p /downloads /app/data
 
 # Expose port
-EXPOSE 5000
+EXPOSE 6199
 
 # Run application
 CMD ["python", "app.py"]

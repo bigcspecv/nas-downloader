@@ -459,7 +459,7 @@ def validate_folder_path(folder_path):
 API_KEY=your-secret-key-here
 
 # Optional
-PORT=5000
+PORT=6199
 ALLOWED_ORIGINS=*  # or chrome-extension://extensionid
 DOWNLOAD_PATH=/downloads
 DATA_PATH=/app/data  # SQLite location
@@ -485,7 +485,7 @@ COPY . .
 RUN mkdir -p /downloads /app/data
 
 # Expose port
-EXPOSE 5000
+EXPOSE 6199
 
 # Run application
 CMD ["python", "app.py"]
@@ -500,14 +500,14 @@ services:
   download-manager:
     build: ./server
     ports:
-      - "5000:5000"
+      - "6199:6199"
     volumes:
       - ./downloads:/downloads
       - ./data:/app/data
     environment:
       - API_KEY=${API_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-      - PORT=5000
+      - PORT=6199
     restart: unless-stopped
 ```
 
@@ -647,7 +647,7 @@ class DownloadManagerClient {
 
 **Via Web UI:**
 
-1. Navigate to http://localhost:5000
+1. Navigate to http://localhost:6199
 2. Browse or create folder
 3. Paste URL
 4. Click "Add Download"

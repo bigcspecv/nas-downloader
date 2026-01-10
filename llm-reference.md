@@ -13,7 +13,7 @@ Historical steps that have been archived from the main context document.
 |------|---------------|
 | 1 | Created project directory structure: server/ with static/ and db/ subdirectories, extension/ with icons/ subdirectory. All directories created using mkdir -p on Windows. |
 | 2 | Created .env.example with all environment variables (API_KEY, PORT, ALLOWED_ORIGINS, etc.). Updated existing .gitignore to add project-specific ignores (downloads/, data/, *.db). Created docker-compose.yml with service definition, volume mounts, and environment variable passing. |
-| 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 5000. |
+| 3 | Created server/requirements.txt with Python dependencies: Flask 3.0.0, flask-sock 0.7.0, aiohttp 3.9.1, python-dotenv 1.0.0. Created server/Dockerfile using python:3.11-alpine base, installing deps, copying app, creating /downloads and /app/data directories, exposing port 6199. |
 | 4 | Created server/db/schema.sql: downloads table with TEXT id (for UUIDs), status enum (queued/downloading/paused/completed/failed), progress tracking (downloaded_bytes, total_bytes), timestamps. Settings table as key-value pairs with default entries for global_rate_limit_bps (0) and max_concurrent_downloads (3). |
 | 5 | Created server/app.py with Flask skeleton: CORS support (configurable via ALLOWED_ORIGINS env), Bearer token authentication middleware using constant-time comparison, DB initialization from schema.sql, SQLite connection helper with Row factory, all route placeholders (folders, settings, downloads, WebSocket). Added flask-cors 4.0.0 to requirements.txt. |
 | 6 | Implemented folder endpoints: GET /api/folders lists subdirectories (accepts optional ?path= query param), POST /api/folders creates new folder (JSON body with 'path' field). Added validate_path() helper using os.path.commonpath to prevent path traversal attacks - validates resolved paths stay within DOWNLOAD_PATH. Returns normalized paths with forward slashes. |
@@ -216,7 +216,7 @@ async def broadcast_downloads():
 # Start broadcast task on app startup
 broadcast_task = asyncio.run_coroutine_threadsafe(broadcast_downloads(), background_loop)
 
-# Client connection example: ws://localhost:5000/ws?api_key=your-secret-key-here
+# Client connection example: ws://localhost:6199/ws?api_key=your-secret-key-here
 ```
 <!-- SECTION-END: WebSocket Broadcasting -->
 

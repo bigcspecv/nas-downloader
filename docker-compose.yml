@@ -4,12 +4,12 @@ services:
   download-manager:
     build: ./server
     ports:
-      - "5000:5000"
+      - "6199:6199"
     volumes:
       - ./downloads:/downloads
       - ./data:/app/data
     environment:
       - API_KEY=${API_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-      - PORT=5000
+      - PORT=6199
     restart: unless-stopped
