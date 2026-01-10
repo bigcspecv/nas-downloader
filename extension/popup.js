@@ -1,4 +1,4 @@
-// Popup script for NAS Download Manager extension
+// Popup script for nas-downloader Chrome extension
 let downloads = [];
 let serverUrl = null;
 let apiKey = null;

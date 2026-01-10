@@ -1,8 +1,8 @@
-# Download Manager - Complete Technical Specification
+# nas-downloader - Complete Technical Specification
 
 ## Overview
 
-A self-hosted download manager with web UI and Chrome extension. Supports pause/resume, rate limiting, folder management, and real-time progress updates via WebSocket.
+A self-hosted download manager for NAS devices and home servers, with web UI and Chrome extension. Supports pause/resume, rate limiting, folder management, and real-time progress updates via WebSocket.
 
 ## Repository Structure
 

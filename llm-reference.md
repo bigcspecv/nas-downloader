@@ -1,4 +1,4 @@
-# Download Manager - Reference Document
+# nas-downloader - Reference Document
 
 This file contains archived working context and established coding patterns. It is referenced by `llm-context.md` to reduce token usage while keeping important information accessible.
 

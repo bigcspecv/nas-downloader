@@ -1,8 +1,8 @@
-# Download Manager - Build Context
+# nas-downloader - Build Context
 
 ## Project Overview
 
-A self-hosted download manager with:
+A self-hosted download manager for NAS devices and home servers, featuring:
 - **Server:** Python/Flask API with SQLite, aiohttp for downloads, WebSocket for real-time updates
 - **Web UI:** Browser-based interface for managing downloads
 - **Chrome Extension:** Manifest V3 extension to add downloads from any page

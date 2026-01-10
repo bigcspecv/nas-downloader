@@ -1,4 +1,4 @@
-// Background service worker for NAS Download Manager extension
+// Background service worker for nas-downloader Chrome extension
 let ws = null;
 let reconnectTimer = null;
 let isConnected = false;
@@ -17,7 +17,7 @@ let baseIconBitmap = null;   // Cached base icon for animation overlay
 
 // Initialize on install/startup
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('NAS Download Manager extension installed');
+    console.log('nas-downloader extension installed');
     createContextMenu();
     loadSettingsAndConnect();
     loadInterceptSetting();
