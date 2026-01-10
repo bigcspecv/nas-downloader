@@ -103,16 +103,16 @@ After completing your step, use the llm-tools scripts to update this file with Z
 
 ---
 
-## Current Step: 50 <!-- CURRENT-STEP -->
+## Current Step: 62 <!-- CURRENT-STEP -->
 
 ## In Progress
 
 <!-- Update this IMMEDIATELY when you start working, BEFORE writing any code -->
 
 <!-- IN-PROGRESS-START -->
-**Status:** In progress
-**Working on:** Step 50: Add default_download_folder setting to settings table
-**Files touched:** server/db/schema.sql, server/app.py
+**Status:** Not started
+**Working on:** -
+**Files touched:** -
 <!-- IN-PROGRESS-END -->
 
 ---
@@ -246,12 +246,12 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [x] 55. Test default folder flow: set default, add download without folder, verify correct location
 
 ### Phase 13: TLS Fingerprint Impersonation
-- [ ] 56. Add `curl_cffi` to requirements.txt (browser TLS fingerprint impersonation)
-- [ ] 57. Replace `aiohttp` with `curl_cffi` in download_manager.py for HTTP requests
-- [ ] 58. Configure curl_cffi to use Chrome impersonation (matches browser TLS fingerprint)
-- [ ] 59. Test downloads from sites with TLS fingerprint detection (e.g., myrient.erista.me)
-- [ ] 60. Verify resume functionality still works with Range headers
-- [ ] 61. Verify rate limiting still works with new HTTP client
+- [x] 56. Add `curl_cffi` to requirements.txt (browser TLS fingerprint impersonation)
+- [x] 57. Replace `aiohttp` with `curl_cffi` in download_manager.py for HTTP requests
+- [x] 58. Configure curl_cffi to use Chrome impersonation (matches browser TLS fingerprint)
+- [x] 59. Test downloads from sites with TLS fingerprint detection (e.g., myrient.erista.me)
+- [x] 60. Verify resume functionality still works with Range headers
+- [x] 61. Verify rate limiting still works with new HTTP client
 
 ### Phase 14: Download History - WebUI - Core Infrastructure
 - [ ] 62. Add `load_history` setting to settings table (default '1' = enabled)
@@ -294,9 +294,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 48.02.07 | Added max concurrent downloads setting to Chrome extension settings modal. Input field with validation (1-10 range). Updated loadServerSettings to populate value from server and saveServerSettings to save both rate limit and max concurrent in single PATCH request. |
 | 34.07-34.09 | Fixed three Phase 8 bugs: (1) 34.07 - _get_unique_filename now checks in-progress downloads for filename conflicts in same folder, preventing collisions when downloads complete. (2) 34.08 - Added set_max_concurrent_downloads() and enforce_concurrency_limit() methods to pause excess downloads when limit is reduced. (3) 34.09 - Converted webui download rows to card layout matching extension style: card header with checkbox/filename/icon buttons, 4px progress bar, info row with status badge/size/speed. Updated skeleton loaders and responsive CSS. |
 | ext+web | Added animated toolbar icon to Chrome extension (downward-moving arrow overlay using OffscreenCanvas when downloads active, restores static icon when idle). Fixed web UI progress bar transitions by rewriting renderDownloads() to update existing DOM elements in place instead of recreating innerHTML - preserves elements so CSS transition: width 1000ms works smoothly. |
+| 56-61 | Implemented TLS fingerprint impersonation using curl_cffi with Chrome 120 impersonation. Added Chrome-specific headers (Sec-CH-UA, Sec-Fetch-*). Added cookie passthrough from Chrome extension to server - extension captures cookies via chrome.cookies.getAll() and sends with download request. Server includes cookies in download headers. Switched Dockerfile from Alpine to Debian slim for curl_cffi compatibility. |
 <!-- CONTEXT-END -->
 
 ---
@@ -352,6 +352,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 | Use download ID for temp file naming instead of filename-based | Enables crash recovery by matching temp files to DB records via ID. Eliminates temp file conflicts since IDs are unique. Simplifies file management logic. | 34.05 |
 | Design token system with CSS custom properties | Centralizes all design values (spacing on 4px scale, typography scale, color palette, border radius, transitions) into CSS variables. Ensures visual consistency across all components, makes global design changes trivial (change one variable instead of hundreds of values), improves maintainability, and provides clear design constraints for future development. Based on industry-standard 4px spacing grid system. | 38 |
 | HTML canvas-based icon generator instead of pre-generated PNGs | Avoids binary files in git, provides easy customization for users, generates proper PNG files on-demand, and includes visual preview. Users can regenerate icons with different designs without needing image editing tools. | 48 |
+| Cookie passthrough from Chrome extension to server for anti-bot bypass | Sites like Myrient throttle non-browser downloads. TLS fingerprint impersonation alone wasn't sufficient - passing browser cookies via the extension allows the server to make requests that appear fully authenticated as a real browser session. | 56-61 |
 <!-- DECISIONS-END -->
 
 ---

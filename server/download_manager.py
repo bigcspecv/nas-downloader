@@ -1,5 +1,5 @@
 import asyncio
-import aiohttp
+from curl_cffi.requests import AsyncSession
 import os
 import sqlite3
 import uuid
@@ -16,7 +16,8 @@ class Download:
     DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
     def __init__(self, download_id: str, url: str, folder: str, filename: str,
-                 db_path: str, download_path: str, manager, user_agent: str = None):
+                 db_path: str, download_path: str, manager, user_agent: str = None,
+                 cookies: str = None):
         self.id = download_id
         self.url = url
         self.folder = folder
@@ -25,6 +26,7 @@ class Download:
         self.download_path = download_path
         self.manager = manager
         self.user_agent = user_agent or self.DEFAULT_USER_AGENT
+        self.cookies = cookies  # Browser cookies for this domain
 
         self.status = 'queued'
         self.downloaded_bytes = 0
@@ -120,92 +122,112 @@ class Download:
             referer = f"{parsed_url.scheme}://{parsed_url.netloc}{referer_path}"
 
             headers = {
-                'User-Agent': self.user_agent,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
                 'Connection': 'keep-alive',
                 'Referer': referer,
+                # Chrome Client Hints - these identify as Chrome 120
+                'Sec-CH-UA': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-CH-UA-Mobile': '?0',
+                'Sec-CH-UA-Platform': '"Windows"',
+                # Sec-Fetch headers - indicate navigation context
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+                'Priority': 'u=0, i',
             }
+            # Add browser cookies if provided (from Chrome extension)
+            if self.cookies:
+                headers['Cookie'] = self.cookies
             if self.downloaded_bytes > 0:
                 headers['Range'] = f'bytes={self.downloaded_bytes}-'
 
-            # Create aiohttp session
-            timeout = aiohttp.ClientTimeout(total=None, sock_read=300)
-            self.session = aiohttp.ClientSession(timeout=timeout)
+            # Create curl_cffi session with Chrome TLS fingerprint impersonation
+            # This makes the request appear to come from a real Chrome browser
+            self.session = AsyncSession(impersonate="chrome120")
 
-            async with self.session.get(self.url, headers=headers) as response:
-                # Check if server supports ranges
-                if self.downloaded_bytes > 0 and response.status != 206:
-                    # Server doesn't support ranges, restart download
-                    self.downloaded_bytes = 0
-                    file_mode = 'wb'
+            response = await self.session.get(
+                self.url,
+                headers=headers,
+                timeout=300,
+                stream=True
+            )
+
+            # Check if server supports ranges (curl_cffi uses status_code)
+            if self.downloaded_bytes > 0 and response.status_code != 206:
+                # Server doesn't support ranges, restart download
+                self.downloaded_bytes = 0
+                file_mode = 'wb'
+            else:
+                file_mode = 'ab' if self.downloaded_bytes > 0 else 'wb'
+
+            # Get total size
+            if 'Content-Length' in response.headers:
+                content_length = int(response.headers['Content-Length'])
+                if response.status_code == 206:
+                    # Partial content, add to existing bytes
+                    self.total_bytes = self.downloaded_bytes + content_length
                 else:
-                    file_mode = 'ab' if self.downloaded_bytes > 0 else 'wb'
+                    self.total_bytes = content_length
 
-                # Get total size
-                if 'Content-Length' in response.headers:
-                    content_length = int(response.headers['Content-Length'])
-                    if response.status == 206:
-                        # Partial content, add to existing bytes
-                        self.total_bytes = self.downloaded_bytes + content_length
-                    else:
-                        self.total_bytes = content_length
+            self.update_db()
+
+            # Download in chunks
+            # Use smaller chunk size if rate limiting is enabled
+            if self.manager.global_rate_limit_bps > 0:
+                # Use 1/4 of rate limit or 1KB minimum to allow smooth throttling
+                chunk_size = max(1024, self.manager.global_rate_limit_bps // 4)
+            else:
+                chunk_size = 8192
+
+            last_db_update = time.time()
+
+            with open(temp_file_path, file_mode) as f:
+                # curl_cffi uses aiter_content() for async streaming
+                async for chunk in response.aiter_content():
+                    if self.cancelled:
+                        break
+
+                    # Wait if paused
+                    while self.paused and not self.cancelled:
+                        await asyncio.sleep(0.1)
+
+                    if self.cancelled:
+                        break
+
+                    # Apply rate limiting BEFORE writing
+                    await self.manager.rate_limit(len(chunk))
+
+                    # Write chunk
+                    f.write(chunk)
+                    self.downloaded_bytes += len(chunk)
+
+                    # Calculate speed
+                    self.calculate_speed(self.downloaded_bytes)
+
+                    # Update DB periodically (every 5 seconds)
+                    current_time = time.time()
+                    if current_time - last_db_update >= 5.0:
+                        self.update_db()
+                        last_db_update = current_time
+
+            # Final update
+            if not self.cancelled:
+                self.status = 'completed'
+                self.speed_bps = 0
+                self.eta_seconds = 0
+
+                # Rename temp file to final filename
+                final_file_path = self.get_file_path()
+                if os.path.exists(temp_file_path):
+                    # Rename temp file to final filename
+                    # (filename is already unique from _get_unique_filename, so no conflict)
+                    os.rename(temp_file_path, final_file_path)
 
                 self.update_db()
-
-                # Download in chunks
-                # Use smaller chunk size if rate limiting is enabled
-                if self.manager.global_rate_limit_bps > 0:
-                    # Use 1/4 of rate limit or 1KB minimum to allow smooth throttling
-                    chunk_size = max(1024, self.manager.global_rate_limit_bps // 4)
-                else:
-                    chunk_size = 8192
-
-                last_db_update = time.time()
-
-                with open(temp_file_path, file_mode) as f:
-                    async for chunk in response.content.iter_chunked(chunk_size):
-                        if self.cancelled:
-                            break
-
-                        # Wait if paused
-                        while self.paused and not self.cancelled:
-                            await asyncio.sleep(0.1)
-
-                        if self.cancelled:
-                            break
-
-                        # Apply rate limiting BEFORE writing
-                        await self.manager.rate_limit(len(chunk))
-
-                        # Write chunk
-                        f.write(chunk)
-                        self.downloaded_bytes += len(chunk)
-
-                        # Calculate speed
-                        self.calculate_speed(self.downloaded_bytes)
-
-                        # Update DB periodically (every 5 seconds)
-                        current_time = time.time()
-                        if current_time - last_db_update >= 5.0:
-                            self.update_db()
-                            last_db_update = current_time
-
-                # Final update
-                if not self.cancelled:
-                    self.status = 'completed'
-                    self.speed_bps = 0
-                    self.eta_seconds = 0
-
-                    # Rename temp file to final filename
-                    final_file_path = self.get_file_path()
-                    if os.path.exists(temp_file_path):
-                        # Rename temp file to final filename
-                        # (filename is already unique from _get_unique_filename, so no conflict)
-                        os.rename(temp_file_path, final_file_path)
-
-                    self.update_db()
 
         except asyncio.CancelledError:
             self.status = 'paused'
@@ -490,7 +512,8 @@ class DownloadManager:
             counter += 1
 
     async def add_download(self, url: str, folder: str, filename: Optional[str] = None,
-                           overwrite: bool = False, user_agent: Optional[str] = None) -> str:
+                           overwrite: bool = False, user_agent: Optional[str] = None,
+                           cookies: Optional[str] = None) -> str:
         """Add new download to queue
 
         Args:
@@ -499,6 +522,7 @@ class DownloadManager:
             filename: Desired filename (optional)
             overwrite: If True, delete existing file with same name. If False, auto-rename.
             user_agent: Browser User-Agent string to use for download requests (optional)
+            cookies: Browser cookies for this domain (optional, from Chrome extension)
 
         Returns:
             Download ID
@@ -547,7 +571,8 @@ class DownloadManager:
         download = Download(
             download_id, url, folder, filename,
             self.db_path, self.download_path, self,
-            user_agent=user_agent
+            user_agent=user_agent,
+            cookies=cookies
         )
 
         # Set status to match what was saved in DB (Download.__init__ defaults to 'queued')

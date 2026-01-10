@@ -68,6 +68,7 @@ Historical steps that have been archived from the main context document.
 | 48.02.02 | Added folder picker modal to Chrome extension popup with breadcrumb navigation and folder list UI. Simplified UX by consolidating to single Add button that opens folder picker. Modified background.js context menu handlers so 'NAS Download to' stores URL and auto-opens popup. Users can now select destination folder for manual URL entry and context menu downloads. Fixed footer positioning issue caused by duplicate CSS rules overriding flex-shrink property. |
 | 48.02.04 | Added custom scrollbar styling to Chrome extension popup. Downloads list and folder list now have matching dark-themed scrollbars with 8px width, rounded thumb with border padding trick, and hover highlight. Uses existing CSS variables (--bg-secondary, --bg-tertiary, --border-color, --text-muted) for consistency. |
 | 48.02.05 | Added multi-select delete feature to Chrome extension popup: toolbar with select mode toggle, selection count with divider, Select All button, and Delete button. Moved URL input to folder picker modal. Add Download button pinned as 32x32 square on right. All toolbar buttons standardized to 28px height. Fixed Select All by forcing full re-render to update checkbox states. |
+| 48.02.07 | Added max concurrent downloads setting to Chrome extension settings modal. Input field with validation (1-10 range). Updated loadServerSettings to populate value from server and saveServerSettings to save both rate limit and max concurrent in single PATCH request. |
 <!-- ARCHIVE-END -->
 
 ---

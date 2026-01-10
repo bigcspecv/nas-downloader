@@ -301,6 +301,31 @@ function updateConnectionStatus(connected) {
     });
 }
 
+// Get cookies for a URL's domain
+async function getCookiesForUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        const cookies = await chrome.cookies.getAll({ domain: urlObj.hostname });
+        // Also try without leading dot for subdomains
+        const parentDomain = urlObj.hostname.split('.').slice(-2).join('.');
+        if (parentDomain !== urlObj.hostname) {
+            const parentCookies = await chrome.cookies.getAll({ domain: parentDomain });
+            // Merge, avoiding duplicates
+            const seen = new Set(cookies.map(c => c.name));
+            for (const cookie of parentCookies) {
+                if (!seen.has(cookie.name)) {
+                    cookies.push(cookie);
+                }
+            }
+        }
+        // Format as cookie header string
+        return cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    } catch (error) {
+        console.error('Failed to get cookies:', error);
+        return '';
+    }
+}
+
 // Add download via API
 async function addDownload(url, folder = '') {
     if (!serverUrl || !apiKey) {
@@ -310,6 +335,9 @@ async function addDownload(url, folder = '') {
     }
 
     try {
+        // Get cookies from browser for this URL's domain
+        const cookies = await getCookiesForUrl(url);
+
         const response = await fetch(`${serverUrl}/api/downloads`, {
             method: 'POST',
             headers: {
@@ -319,7 +347,8 @@ async function addDownload(url, folder = '') {
             body: JSON.stringify({
                 url: url,
                 folder: folder || '',  // Use provided folder or default
-                user_agent: navigator.userAgent  // Pass browser's User-Agent
+                user_agent: navigator.userAgent,  // Pass browser's User-Agent
+                cookies: cookies  // Pass browser cookies for this domain
             })
         });
 

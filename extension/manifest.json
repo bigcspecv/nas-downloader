@@ -9,7 +9,8 @@
     "contextMenus",
     "activeTab",
     "notifications",
-    "downloads"
+    "downloads",
+    "cookies"
   ],
 
   "optional_host_permissions": [

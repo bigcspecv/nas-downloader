@@ -447,6 +447,7 @@ def create_download():
     filename = data.get('filename')
     overwrite = data.get('overwrite', False)
     user_agent = data.get('user_agent')  # Browser User-Agent for download requests
+    cookies = data.get('cookies')  # Browser cookies for this domain
 
     # If no folder specified, use default_download_folder from settings
     if not folder:
@@ -489,7 +490,7 @@ def create_download():
             return jsonify({'error': 'Filename cannot be empty'}), 400
 
     try:
-        download_id = run_async(download_manager.add_download(url, folder, filename, overwrite, user_agent))
+        download_id = run_async(download_manager.add_download(url, folder, filename, overwrite, user_agent, cookies))
 
         # Get the created download info
         downloads = run_async(download_manager.get_downloads())
