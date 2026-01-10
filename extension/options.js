@@ -21,6 +21,17 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     const cleanUrl = serverUrl.replace(/\/$/, '');
 
     try {
+        // Request permission for the server URL
+        const origin = new URL(cleanUrl).origin + '/*';
+        const granted = await chrome.permissions.request({
+            origins: [origin]
+        });
+
+        if (!granted) {
+            showStatus('Permission denied. The extension needs access to your server URL to function.', 'error');
+            return;
+        }
+
         // Save to Chrome storage
         await chrome.storage.sync.set({
             serverUrl: cleanUrl,
@@ -57,6 +68,19 @@ document.getElementById('testConnection').addEventListener('click', async () => 
 
         console.log('Testing connection to:', cleanUrl);
         console.log('Using API key:', apiKey.substring(0, 4) + '...');
+
+        // Check if we have permission for this URL
+        const origin = new URL(cleanUrl).origin + '/*';
+        const hasPermission = await chrome.permissions.contains({ origins: [origin] });
+
+        if (!hasPermission) {
+            // Request permission
+            const granted = await chrome.permissions.request({ origins: [origin] });
+            if (!granted) {
+                showStatus('Permission denied. Cannot test connection without access to the server URL.', 'error');
+                return;
+            }
+        }
 
         // Test by fetching server status
         const response = await fetch(`${cleanUrl}/api/downloads`, {

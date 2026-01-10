@@ -110,6 +110,16 @@ async function loadSettingsAndConnect() {
         const result = await chrome.storage.sync.get(['serverUrl', 'apiKey']);
 
         if (result.serverUrl && result.apiKey) {
+            // Check if we have permission for this server URL
+            const origin = new URL(result.serverUrl).origin + '/*';
+            const hasPermission = await chrome.permissions.contains({ origins: [origin] });
+
+            if (!hasPermission) {
+                console.log('No permission for server URL. User needs to re-save settings.');
+                updateConnectionStatus(false);
+                return;
+            }
+
             serverUrl = result.serverUrl;
             apiKey = result.apiKey;
             connectWebSocket();

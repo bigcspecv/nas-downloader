@@ -232,7 +232,12 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.02.06 Add ability to set the server's global download speed in settings on the main popup by clicking on the global download speed in the footer and bringing up a modal
    - [x] 48.02.07 Add ability to set the server's max concurrent downloads in settings on the main popup by adding this setting to the modal from the previous step
 
-### Phase 12: Download History - WebUI - Core Infrastructure
+### Phase 12: Finalize
+- [ ] 73. Test full flow (docker-compose up, add download, pause/resume, rate limit)
+- [ ] 74. Test extension (package extension, connect, add download, verify sync)
+- [ ] 75. Create `README.md`
+
+### Phase 13: Download History - WebUI - Core Infrastructure
 - [ ] 49. Add `load_history` setting to settings table (default '1' = enabled)
 - [ ] 50. Create `get_history_downloads()` method to query DB for completed/failed downloads
 - [ ] 51. Modify `get_downloads()` to merge active (memory) + history (DB query)
@@ -242,7 +247,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 55. Update UI filter tabs to show correct counts including history
 - [ ] 56. Verify real-time updates work smoothly for active downloads
 
-### Phase 13: Download History - WebUI - Deletion Management
+### Phase 14: Download History - WebUI - Deletion Management
 - [ ] 57. Create `delete_history_download(id)` method (DB-only, no memory lookup)
 - [ ] 58. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
 - [ ] 59. Verify `delete_file=true/false` query param works for completed downloads
@@ -252,7 +257,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 63. Broadcast deletion events via WebSocket to all clients
 - [ ] 64. Test deletion with/without file removal across multiple clients
 
-### Phase 14: Download History - WebUI - Bulk Operations
+### Phase 15: Download History - WebUI - Bulk Operations
 - [ ] 65. Add POST `/api/downloads/clear-completed` endpoint
 - [ ] 66. Add POST `/api/downloads/clear-failed` endpoint
 - [ ] 67. Add `delete_files=true/false` query param for bulk clear
@@ -262,10 +267,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 71. Show progress notification: "Clearing downloads... (15/23)"
 - [ ] 72. Broadcast bulk deletion to refresh all connected clients
 
-### Phase 15: Finalize
-- [ ] 73. Test full flow (docker-compose up, add download, pause/resume, rate limit)
-- [ ] 74. Test extension (connect, add download, verify sync)
-- [ ] 75. Create `README.md`
+
 
 ---
 
