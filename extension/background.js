@@ -35,6 +35,12 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.downloads.onCreated.addListener((downloadItem) => {
     console.log('Download intercepted:', downloadItem.url, 'interceptEnabled:', interceptEnabled);
 
+    // Skip blob: URLs - these are internal browser downloads (canvas exports, etc.)
+    if (downloadItem.url.startsWith('blob:')) {
+        console.log('Blob URL detected, allowing browser to handle download locally');
+        return;
+    }
+
     // Check if interception is enabled
     if (!interceptEnabled) {
         console.log('Interception disabled, allowing browser download to proceed normally');
