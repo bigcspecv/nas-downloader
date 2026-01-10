@@ -6,13 +6,17 @@ import uuid
 import time
 from datetime import datetime
 from typing import Optional, Dict, List
+from urllib.parse import urlparse
 
 
 class Download:
     """Individual download handler"""
 
+    # Default User-Agent to use if none provided (mimics Chrome on Windows)
+    DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
     def __init__(self, download_id: str, url: str, folder: str, filename: str,
-                 db_path: str, download_path: str, manager):
+                 db_path: str, download_path: str, manager, user_agent: str = None):
         self.id = download_id
         self.url = url
         self.folder = folder
@@ -20,6 +24,7 @@ class Download:
         self.db_path = db_path
         self.download_path = download_path
         self.manager = manager
+        self.user_agent = user_agent or self.DEFAULT_USER_AGENT
 
         self.status = 'queued'
         self.downloaded_bytes = 0
@@ -107,8 +112,21 @@ class Download:
             if os.path.exists(temp_file_path):
                 self.downloaded_bytes = os.path.getsize(temp_file_path)
 
-            # Prepare headers for resume
-            headers = {}
+            # Prepare headers with browser-like headers to avoid abuse detection
+            # Extract referer from URL (use parent directory as referer)
+            parsed_url = urlparse(self.url)
+            # Use the directory path as referer (like clicking from a file listing)
+            referer_path = '/'.join(parsed_url.path.split('/')[:-1]) + '/'
+            referer = f"{parsed_url.scheme}://{parsed_url.netloc}{referer_path}"
+
+            headers = {
+                'User-Agent': self.user_agent,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': referer,
+            }
             if self.downloaded_bytes > 0:
                 headers['Range'] = f'bytes={self.downloaded_bytes}-'
 
@@ -356,7 +374,7 @@ class DownloadManager:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT id, url, filename, folder, status, downloaded_bytes, total_bytes
+            SELECT id, url, filename, folder, status, downloaded_bytes, total_bytes, user_agent
             FROM downloads
             WHERE status IN ('queued', 'downloading', 'paused')
         """)
@@ -364,7 +382,8 @@ class DownloadManager:
         for row in cursor.fetchall():
             download = Download(
                 row['id'], row['url'], row['folder'], row['filename'],
-                self.db_path, self.download_path, self
+                self.db_path, self.download_path, self,
+                user_agent=row['user_agent']
             )
             download.status = row['status']
             download.downloaded_bytes = row['downloaded_bytes']
@@ -470,7 +489,8 @@ class DownloadManager:
             test_filename = f"{name} ({counter}){ext}"
             counter += 1
 
-    async def add_download(self, url: str, folder: str, filename: Optional[str] = None, overwrite: bool = False) -> str:
+    async def add_download(self, url: str, folder: str, filename: Optional[str] = None,
+                           overwrite: bool = False, user_agent: Optional[str] = None) -> str:
         """Add new download to queue
 
         Args:
@@ -478,6 +498,7 @@ class DownloadManager:
             folder: Folder path relative to download_path
             filename: Desired filename (optional)
             overwrite: If True, delete existing file with same name. If False, auto-rename.
+            user_agent: Browser User-Agent string to use for download requests (optional)
 
         Returns:
             Download ID
@@ -515,9 +536,9 @@ class DownloadManager:
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO downloads (id, url, filename, folder, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, (download_id, url, filename, folder, initial_status))
+            INSERT INTO downloads (id, url, filename, folder, status, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (download_id, url, filename, folder, initial_status, user_agent))
 
         conn.commit()
         conn.close()
@@ -525,7 +546,8 @@ class DownloadManager:
         # Create Download object
         download = Download(
             download_id, url, folder, filename,
-            self.db_path, self.download_path, self
+            self.db_path, self.download_path, self,
+            user_agent=user_agent
         )
 
         # Set status to match what was saved in DB (Download.__init__ defaults to 'queued')

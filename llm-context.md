@@ -238,42 +238,50 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - [ ] 82. Create `README.md`
 
 ### Phase 12.1: Default Download Folder Setting
-- [ ] 50. Add `default_download_folder` setting to settings table (default empty = use DOWNLOAD_DIR env var)
-- [ ] 51. Update GET/PATCH `/api/settings` to handle `default_download_folder` setting
-- [ ] 52. Add default folder browser UI in web settings modal (reuse existing folder browser component)
-- [ ] 53. Update download creation logic to use default folder when `folder` is empty/not specified
-- [ ] 54. Update Chrome extension settings to show/set default download folder
-- [ ] 55. Test default folder flow: set default, add download without folder, verify correct location
+- [x] 50. Add `default_download_folder` setting to settings table (default empty = use DOWNLOAD_DIR env var)
+- [x] 51. Update GET/PATCH `/api/settings` to handle `default_download_folder` setting
+- [x] 52. Add default folder browser UI in web settings modal (reuse existing folder browser component)
+- [x] 53. Update download creation logic to use default folder when `folder` is empty/not specified
+- [x] 54. Update Chrome extension settings to show/set default download folder
+- [x] 55. Test default folder flow: set default, add download without folder, verify correct location
 
-### Phase 13: Download History - WebUI - Core Infrastructure
-- [ ] 56. Add `load_history` setting to settings table (default '1' = enabled)
-- [ ] 57. Create `get_history_downloads()` method to query DB for completed/failed downloads
-- [ ] 58. Modify `get_downloads()` to merge active (memory) + history (DB query)
-- [ ] 59. Add pagination support: limit (default 50) and offset params
-- [ ] 60. Update WebSocket broadcast to include history based on filter
-- [ ] 61. Test with 100+ downloads to verify performance
-- [ ] 62. Update UI filter tabs to show correct counts including history
-- [ ] 63. Verify real-time updates work smoothly for active downloads
+### Phase 13: TLS Fingerprint Impersonation
+- [ ] 56. Add `curl_cffi` to requirements.txt (browser TLS fingerprint impersonation)
+- [ ] 57. Replace `aiohttp` with `curl_cffi` in download_manager.py for HTTP requests
+- [ ] 58. Configure curl_cffi to use Chrome impersonation (matches browser TLS fingerprint)
+- [ ] 59. Test downloads from sites with TLS fingerprint detection (e.g., myrient.erista.me)
+- [ ] 60. Verify resume functionality still works with Range headers
+- [ ] 61. Verify rate limiting still works with new HTTP client
 
-### Phase 14: Download History - WebUI - Deletion Management
-- [ ] 64. Create `delete_history_download(id)` method (DB-only, no memory lookup)
-- [ ] 65. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
-- [ ] 66. Verify `delete_file=true/false` query param works for completed downloads
-- [ ] 67. Make delete buttons visible for completed/failed downloads in UI
-- [ ] 68. Add delete confirmation with checkbox "Also delete downloaded file"
-- [ ] 69. Disable pause/resume buttons for completed/failed (show status only)
-- [ ] 70. Broadcast deletion events via WebSocket to all clients
-- [ ] 71. Test deletion with/without file removal across multiple clients
+### Phase 14: Download History - WebUI - Core Infrastructure
+- [ ] 62. Add `load_history` setting to settings table (default '1' = enabled)
+- [ ] 63. Create `get_history_downloads()` method to query DB for completed/failed downloads
+- [ ] 64. Modify `get_downloads()` to merge active (memory) + history (DB query)
+- [ ] 65. Add pagination support: limit (default 50) and offset params
+- [ ] 66. Update WebSocket broadcast to include history based on filter
+- [ ] 67. Test with 100+ downloads to verify performance
+- [ ] 68. Update UI filter tabs to show correct counts including history
+- [ ] 69. Verify real-time updates work smoothly for active downloads
 
-### Phase 15: Download History - WebUI - Bulk Operations
-- [ ] 72. Add POST `/api/downloads/clear-completed` endpoint
-- [ ] 73. Add POST `/api/downloads/clear-failed` endpoint
-- [ ] 74. Add `delete_files=true/false` query param for bulk clear
-- [ ] 75. Add "Clear Completed" / "Clear Failed" buttons to UI toolbar
-- [ ] 76. Show confirmation: "Clear 23 completed downloads?"
-- [ ] 77. Add checkbox to dialog: "Also delete all downloaded files"
-- [ ] 78. Show progress notification: "Clearing downloads... (15/23)"
-- [ ] 79. Broadcast bulk deletion to refresh all connected clients
+### Phase 15: Download History - WebUI - Deletion Management
+- [ ] 70. Create `delete_history_download(id)` method (DB-only, no memory lookup)
+- [ ] 71. Modify DELETE `/api/downloads/<id>` to check DB if not in memory
+- [ ] 72. Verify `delete_file=true/false` query param works for completed downloads
+- [ ] 73. Make delete buttons visible for completed/failed downloads in UI
+- [ ] 74. Add delete confirmation with checkbox "Also delete downloaded file"
+- [ ] 75. Disable pause/resume buttons for completed/failed (show status only)
+- [ ] 76. Broadcast deletion events via WebSocket to all clients
+- [ ] 77. Test deletion with/without file removal across multiple clients
+
+### Phase 16: Download History - WebUI - Bulk Operations
+- [ ] 78. Add POST `/api/downloads/clear-completed` endpoint
+- [ ] 79. Add POST `/api/downloads/clear-failed` endpoint
+- [ ] 80. Add `delete_files=true/false` query param for bulk clear
+- [ ] 81. Add "Clear Completed" / "Clear Failed" buttons to UI toolbar
+- [ ] 82. Show confirmation: "Clear 23 completed downloads?"
+- [ ] 83. Add checkbox to dialog: "Also delete all downloaded files"
+- [ ] 84. Show progress notification: "Clearing downloads... (15/23)"
+- [ ] 85. Broadcast bulk deletion to refresh all connected clients
 
 
 

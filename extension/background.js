@@ -318,7 +318,8 @@ async function addDownload(url, folder = '') {
             },
             body: JSON.stringify({
                 url: url,
-                folder: folder || ''  // Use provided folder or default
+                folder: folder || '',  // Use provided folder or default
+                user_agent: navigator.userAgent  // Pass browser's User-Agent
             })
         });
 

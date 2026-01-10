@@ -1191,7 +1191,7 @@ async function addDownload(event) {
     const filename = filenameField.value.trim();
 
     try {
-        const body = { url, folder };
+        const body = { url, folder, user_agent: navigator.userAgent };
         if (filename) body.filename = filename;
 
         // Check for filename conflicts if user specified a filename
