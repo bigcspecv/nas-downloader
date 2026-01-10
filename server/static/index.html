@@ -98,10 +98,15 @@
                         <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
                         Pause All
                     </button>
-                    <button class="btn-action btn-danger" id="deleteSelectedBtn" onclick="deleteSelected()">
-                        <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
-                        Delete selected
-                    </button>
+                    <div class="toolbar-select-group">
+                        <label class="select-all-checkbox" title="Select all">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">
+                        </label>
+                        <button class="btn-action btn-danger" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>
+                            <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
+                            Delete (<span id="selectedCount">0</span>)
+                        </button>
+                    </div>
                 </div>
                 <div class="toolbar-right">
                     <div class="search-box" id="searchBox">
@@ -111,71 +116,64 @@
                 </div>
             </div>
 
-            <!-- Downloads Table -->
+            <!-- Downloads List -->
             <div class="downloads-container">
-                <div class="downloads-table">
-                    <div class="table-header">
-                        <div class="th th-checkbox">
-                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">
-                        </div>
-                        <div class="th th-name">Name</div>
-                        <div class="th th-size">Size</div>
-                        <div class="th th-progress">Progress</div>
-                        <div class="th th-speed">Speed</div>
-                        <div class="th th-actions"></div>
-                    </div>
-                    <div class="table-body" id="downloadsTable">
+                <div class="downloads-list">
+                    <div class="downloads-list-body" id="downloadsTable">
                         <!-- Skeleton loaders (shown on initial load) -->
                         <div class="skeleton-loader">
-                            <div class="skeleton-download-row">
-                                <div class="skeleton skeleton-checkbox"></div>
-                                <div class="skeleton-info">
-                                    <div class="skeleton skeleton-box-lg"></div>
+                            <div class="skeleton-card">
+                                <div class="skeleton-card-header">
+                                    <div class="skeleton skeleton-checkbox"></div>
+                                    <div class="skeleton-card-title">
+                                        <div class="skeleton skeleton-box-lg"></div>
+                                        <div class="skeleton skeleton-box-sm"></div>
+                                    </div>
+                                    <div class="skeleton-card-controls">
+                                        <div class="skeleton skeleton-icon"></div>
+                                        <div class="skeleton skeleton-icon"></div>
+                                    </div>
+                                </div>
+                                <div class="skeleton skeleton-progress-bar"></div>
+                                <div class="skeleton-card-info">
                                     <div class="skeleton skeleton-box-sm"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-progress">
-                                    <div class="skeleton skeleton-box"></div>
-                                    <div class="skeleton skeleton-box"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-actions">
-                                    <div class="skeleton skeleton-btn"></div>
-                                    <div class="skeleton skeleton-btn"></div>
+                                    <div class="skeleton skeleton-box-sm"></div>
                                 </div>
                             </div>
-                            <div class="skeleton-download-row">
-                                <div class="skeleton skeleton-checkbox"></div>
-                                <div class="skeleton-info">
-                                    <div class="skeleton skeleton-box-lg"></div>
+                            <div class="skeleton-card">
+                                <div class="skeleton-card-header">
+                                    <div class="skeleton skeleton-checkbox"></div>
+                                    <div class="skeleton-card-title">
+                                        <div class="skeleton skeleton-box-lg"></div>
+                                        <div class="skeleton skeleton-box-sm"></div>
+                                    </div>
+                                    <div class="skeleton-card-controls">
+                                        <div class="skeleton skeleton-icon"></div>
+                                        <div class="skeleton skeleton-icon"></div>
+                                    </div>
+                                </div>
+                                <div class="skeleton skeleton-progress-bar"></div>
+                                <div class="skeleton-card-info">
                                     <div class="skeleton skeleton-box-sm"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-progress">
-                                    <div class="skeleton skeleton-box"></div>
-                                    <div class="skeleton skeleton-box"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-actions">
-                                    <div class="skeleton skeleton-btn"></div>
-                                    <div class="skeleton skeleton-btn"></div>
+                                    <div class="skeleton skeleton-box-sm"></div>
                                 </div>
                             </div>
-                            <div class="skeleton-download-row">
-                                <div class="skeleton skeleton-checkbox"></div>
-                                <div class="skeleton-info">
-                                    <div class="skeleton skeleton-box-lg"></div>
+                            <div class="skeleton-card">
+                                <div class="skeleton-card-header">
+                                    <div class="skeleton skeleton-checkbox"></div>
+                                    <div class="skeleton-card-title">
+                                        <div class="skeleton skeleton-box-lg"></div>
+                                        <div class="skeleton skeleton-box-sm"></div>
+                                    </div>
+                                    <div class="skeleton-card-controls">
+                                        <div class="skeleton skeleton-icon"></div>
+                                        <div class="skeleton skeleton-icon"></div>
+                                    </div>
+                                </div>
+                                <div class="skeleton skeleton-progress-bar"></div>
+                                <div class="skeleton-card-info">
                                     <div class="skeleton skeleton-box-sm"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-progress">
-                                    <div class="skeleton skeleton-box"></div>
-                                    <div class="skeleton skeleton-box"></div>
-                                </div>
-                                <div class="skeleton skeleton-box"></div>
-                                <div class="skeleton-actions">
-                                    <div class="skeleton skeleton-btn"></div>
-                                    <div class="skeleton skeleton-btn"></div>
+                                    <div class="skeleton skeleton-box-sm"></div>
                                 </div>
                             </div>
                         </div>

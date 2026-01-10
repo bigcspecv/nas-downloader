@@ -394,8 +394,55 @@ body {
     color: var(--text-muted);
 }
 
+.toolbar-select-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.select-all-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.select-all-checkbox:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+}
+
+.select-all-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.btn-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-action:disabled:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    transform: none;
+}
+
+.btn-action.btn-danger:disabled {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
 /* ============================================================================
-   Downloads Table
+   Downloads Container
    ============================================================================ */
 
 .downloads-container {
@@ -409,160 +456,156 @@ body {
 }
 
 .table-header {
-    display: grid;
-    grid-template-columns: 40px 2fr 120px 160px 100px 140px;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-6);
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    line-height: var(--leading-tight);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.th {
-    display: flex;
-    align-items: center;
-}
-
-.th-checkbox {
-    justify-content: center;
+    display: none; /* Hidden - using card layout now */
 }
 
 .table-body {
     min-height: 200px;
 }
 
-.download-row {
-    display: grid;
-    grid-template-columns: 40px 2fr 120px 160px 100px 140px;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-6);
+/* ============================================================================
+   Download Cards (Extension-matching style)
+   ============================================================================ */
+
+.download-card {
+    padding: var(--space-4);
     border-bottom: 1px solid var(--border-color);
-    transition: transform var(--transition-fast), box-shadow var(--transition-base);
-    align-items: center;
+    background: var(--bg-primary);
+    transition: background-color var(--transition-base);
 }
 
-.download-row:hover {
-    background: var(--bg-secondary);
+.download-card:hover {
+    background-color: var(--bg-secondary);
 }
 
-.download-row.selected {
+.download-card.selected {
     background: rgba(20, 184, 166, 0.1);
-    border-left: 3px solid var(--accent-primary);
-    padding-left: calc(var(--space-6) - 3px);
 }
 
-.td {
+.download-card-header {
     display: flex;
     align-items: center;
+    margin-bottom: var(--space-2);
+    gap: var(--space-3);
+}
+
+.download-card-checkbox {
+    flex-shrink: 0;
+}
+
+.download-card-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.download-card-title {
+    flex: 1;
     min-width: 0;
 }
 
-.td-checkbox {
-    justify-content: center;
-}
-
-.download-info {
-    min-width: 0;
-}
-
-.download-name {
-    font-size: var(--text-base);
+.download-card-filename {
+    font-size: var(--text-sm);
     font-weight: 500;
     color: var(--text-primary);
-    line-height: var(--leading-tight);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-bottom: var(--space-1);
-}
-
-.download-url {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
     line-height: var(--leading-tight);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.download-folder {
+.download-card-folder {
     font-size: var(--text-xs);
-    color: var(--accent-primary);
+    color: var(--text-muted);
     margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    line-height: var(--leading-tight);
 }
 
-.download-error {
-    font-size: var(--text-xs);
-    color: var(--danger);
-    margin-top: var(--spacing-1);
+.download-card-folder .icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.download-card-controls {
+    display: flex;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.download-card-controls .icon-btn {
+    width: 24px;
+    height: 24px;
+    padding: var(--space-1);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: var(--spacing-1);
-    font-weight: 500;
-    line-height: var(--leading-tight);
-}
-
-.download-size {
-    font-size: 13px;
+    justify-content: center;
+    transition: all var(--transition-base);
     color: var(--text-secondary);
-    line-height: var(--leading-tight);
 }
 
-.download-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+.download-card-controls .icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
-.progress-text {
-    font-size: var(--text-sm);
+.download-card-controls .icon-btn .icon {
+    width: 16px;
+    height: 16px;
+}
+
+.download-card-controls .icon-btn.btn-danger {
     color: var(--text-secondary);
-    line-height: var(--leading-tight);
-    transition: color var(--transition-smooth);
 }
 
-.progress-bar {
-    width: 100%;
-    height: var(--space-1);
+.download-card-controls .icon-btn.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.download-card-progress {
+    margin-bottom: var(--space-2);
+}
+
+.progress-bar-bg {
+    height: 4px;
     background: var(--bg-tertiary);
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
 }
 
-.progress-fill {
+.progress-bar-fill {
     height: 100%;
     background: var(--accent-gradient);
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background var(--transition-smooth);
-    border-radius: 2px;
+    transition: width 1000ms linear;
+    border-radius: var(--radius-sm);
     position: relative;
 }
 
-.progress-fill.completed {
+.progress-bar-fill.completed {
     background: var(--success);
 }
 
-.progress-fill.failed {
+.progress-bar-fill.failed {
     background: var(--danger);
 }
 
-.progress-fill.paused {
+.progress-bar-fill.paused {
     background: var(--warning);
 }
 
 /* Animated shimmer effect for active downloads */
-.progress-fill:not(.completed):not(.failed):not(.paused)::before {
+.progress-bar-fill:not(.completed):not(.failed):not(.paused)::before {
     content: '';
     position: absolute;
     top: 0;
@@ -587,29 +630,85 @@ body {
     }
 }
 
-.download-speed {
-    font-size: 13px;
+.download-card-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.download-card-info-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.download-card-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 500;
+}
+
+.download-card-status.downloading {
+    background: rgba(20, 184, 166, 0.1);
+    color: var(--accent-primary);
+}
+
+.download-card-status.completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.download-card-status.paused {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.download-card-status.failed {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.download-card-status.queued {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+}
+
+.download-card-size {
+    color: var(--text-secondary);
+}
+
+.download-card-speed {
     color: var(--accent-primary);
     font-weight: 500;
-    line-height: var(--leading-tight);
-    transition: color var(--transition-smooth), opacity var(--transition-smooth);
 }
 
-.download-speed:not(.inactive) {
-    animation: speedPulse 2s ease-in-out infinite;
-}
-
-.download-speed.inactive {
+.download-card-speed.inactive {
     color: var(--text-muted);
 }
 
-@keyframes speedPulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
+.download-card-error {
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.download-card-error .icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
 }
 
 .download-actions {
@@ -1374,13 +1473,47 @@ body {
     border-radius: var(--radius-lg);
 }
 
-.skeleton-download-row {
-    display: grid;
-    grid-template-columns: 40px 2fr 120px 160px 100px 140px;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-6);
+/* Skeleton card matching the download card layout */
+.skeleton-card {
+    padding: var(--space-4);
     border-bottom: 1px solid var(--border-color);
+}
+
+.skeleton-card-header {
+    display: flex;
     align-items: center;
+    margin-bottom: var(--space-2);
+    gap: var(--space-3);
+}
+
+.skeleton-card-title {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.skeleton-card-controls {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.skeleton-card-info {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.skeleton-progress-bar {
+    height: 4px;
+    margin-bottom: var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
 }
 
 .skeleton-box {
@@ -1390,43 +1523,21 @@ body {
 
 .skeleton-box-sm {
     height: var(--space-3);
-    width: 60%;
+    width: 80px;
     border-radius: var(--radius-sm);
 }
 
 .skeleton-box-lg {
-    height: var(--space-5);
+    height: var(--space-4);
+    width: 200px;
     border-radius: var(--radius-sm);
 }
 
 .skeleton-checkbox {
-    width: var(--space-4);
-    height: var(--space-4);
+    width: 16px;
+    height: 16px;
     border-radius: 2px;
-}
-
-.skeleton-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.skeleton-info {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-}
-
-.skeleton-actions {
-    display: flex;
-    gap: var(--space-2);
-    justify-content: flex-end;
-}
-
-.skeleton-btn {
-    width: 60px;
-    height: var(--space-8);
-    border-radius: var(--radius-md);
+    flex-shrink: 0;
 }
 
 /* Hide skeleton when content is loaded */
@@ -1500,26 +1611,6 @@ input[type="checkbox"] {
 @media (max-width: 968px) {
     .sidebar {
         width: 220px;
-    }
-
-    .table-header,
-    .download-row {
-        grid-template-columns: 36px 1fr 100px 120px 100px;
-    }
-
-    .th-speed,
-    .download-speed {
-        display: none;
-    }
-
-    /* Make action buttons smaller */
-    .download-actions {
-        gap: 6px;
-    }
-
-    .btn-icon {
-        padding: 6px var(--space-2);
-        font-size: var(--text-xs);
     }
 }
 
@@ -1600,17 +1691,17 @@ input[type="checkbox"] {
         min-height: 44px;
     }
 
-    /* Table adjustments */
-    .table-header,
-    .download-row {
-        grid-template-columns: 36px 1fr 90px 110px;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
+    /* Card adjustments for tablet */
+    .download-card {
+        padding: var(--space-3);
     }
 
-    .th-speed,
-    .download-speed {
-        display: none;
+    .download-card-filename {
+        font-size: var(--text-xs);
+    }
+
+    .download-card-info {
+        font-size: 10px;
     }
 
     /* Status bar adjustments */
@@ -1699,150 +1790,46 @@ input[type="checkbox"] {
         white-space: nowrap;
     }
 
-    /* Card-style layout for downloads */
-    .table-header {
-        display: none;
-    }
-
-    .download-row {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        grid-template-rows: auto auto auto auto;
-        gap: var(--space-1) var(--space-2);
-        padding: var(--space-2) var(--space-3);
-        position: relative;
-        border-radius: var(--radius-lg);
-        min-height: auto;
-    }
-
-    /* Row 1-2, Col 1: Checkbox */
-    .td-checkbox {
-        grid-column: 1;
-        grid-row: 1 / 3;
-        align-self: start;
-        padding-top: 2px;
-    }
-
-    /* Row 1-2, Col 2: Filename and URL */
-    .download-row .td:has(.download-info) {
-        grid-column: 2;
-        grid-row: 1 / 3;
-        min-width: 0;
-        align-self: start;
-    }
-
-    .download-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        margin: 0;
-        padding: 0;
-    }
-
-    .download-name {
-        font-size: var(--text-base);
-        font-weight: 600;
-        line-height: var(--leading-tight);
-        margin: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .download-url {
-        font-size: 10px;
-        line-height: var(--leading-tight);
-        opacity: 0.6;
-        margin: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .download-folder {
-        font-size: 10px;
-        margin: 0;
-    }
-
-    .download-error {
-        font-size: 10px;
-        margin: var(--spacing-1) 0 0 0;
-    }
-
-    /* Row 1-2, Col 3: Resume button (first action button) */
-    .download-row .td:has(.download-actions) {
-        grid-column: 3;
-        grid-row: 1 / 5;
-        justify-self: end;
-        align-self: start;
-    }
-
-    .download-actions {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-1);
-        margin: 0;
-    }
-
-    .btn-icon {
-        padding: 6px var(--space-3);
-        min-height: var(--space-8);
-        font-size: var(--text-xs);
-        font-weight: 500;
-        white-space: nowrap;
-    }
-
-    /* Hide size on mobile */
-    .download-row .td:has(.download-size) {
-        display: none;
-    }
-
-    /* Row 3, Col 1-2: Progress text and speed on same line */
-    .download-row .td:has(.download-speed) {
-        grid-column: 2;
-        grid-row: 3;
-        justify-self: end;
-        align-self: start;
-        display: block;
-    }
-
-    .download-speed {
-        display: block;
-        font-size: var(--text-xs);
-        font-weight: 600;
-        line-height: var(--leading-tight);
-        margin: 0;
-        color: var(--accent-primary);
-    }
-
-    /* Row 3, Col 1-2: Progress text (percentage) */
-    .download-row .td:has(.download-progress) {
-        grid-column: 1 / 3;
-        grid-row: 3 / 5;
-    }
-
-    .download-progress {
-        display: flex !important;
-        flex-direction: column;
-        gap: 6px;
+    /* Toolbar select group - stack on mobile */
+    .toolbar-select-group {
         width: 100%;
-        margin: 0;
+        justify-content: stretch;
     }
 
-    .progress-text {
+    .toolbar-select-group .btn-action {
+        flex: 1;
+    }
+
+    /* Card adjustments for mobile */
+    .download-card {
+        padding: var(--space-3);
+    }
+
+    .download-card-header {
+        gap: var(--space-2);
+    }
+
+    .download-card-filename {
         font-size: var(--text-xs);
-        font-weight: 500;
-        color: var(--text-secondary);
-        padding-right: var(--space-2);
     }
 
-    .progress-bar {
-        width: 100%;
-        height: var(--space-1);
-        background: var(--bg-tertiary);
-        border-radius: 2px;
-        overflow: hidden;
-        margin: 0;
+    .download-card-folder {
+        font-size: 10px;
+    }
+
+    .download-card-info {
+        font-size: 10px;
+        flex-wrap: wrap;
+    }
+
+    .download-card-status {
+        font-size: 10px;
+        padding: 1px var(--space-1);
+    }
+
+    .download-card-error {
+        font-size: 10px;
+        padding: var(--space-1) var(--space-2);
     }
 
     /* Status bar - more compact */

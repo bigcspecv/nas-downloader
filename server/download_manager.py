@@ -423,9 +423,20 @@ class DownloadManager:
             filename: Desired filename
 
         Returns:
-            Unique filename that doesn't conflict with existing files
+            Unique filename that doesn't conflict with existing files or in-progress downloads
         """
         folder_path = os.path.join(self.download_path, folder)
+
+        # Normalize folder for comparison (use forward slashes, strip leading/trailing slashes)
+        normalized_folder = folder.replace('\\', '/').strip('/')
+
+        # Get set of filenames that are in-progress downloads in the same folder
+        in_progress_filenames = set()
+        for download in self.downloads.values():
+            # Normalize the download's folder for comparison
+            download_folder = download.folder.replace('\\', '/').strip('/')
+            if download_folder == normalized_folder and download.status in ['queued', 'downloading', 'paused']:
+                in_progress_filenames.add(download.filename)
 
         # Split filename into name and extension
         if '.' in filename:
@@ -443,8 +454,11 @@ class DownloadManager:
         while True:
             final_path = os.path.join(folder_path, test_filename)
 
-            # Only check final file (temp files now use unique IDs, so no conflicts)
-            if not os.path.exists(final_path):
+            # Check both: file doesn't exist on disk AND not an in-progress download
+            file_exists = os.path.exists(final_path)
+            in_progress = test_filename in in_progress_filenames
+
+            if not file_exists and not in_progress:
                 return test_filename
 
             # Generate next candidate filename
@@ -645,3 +659,42 @@ class DownloadManager:
         )
         conn.commit()
         conn.close()
+
+    async def set_max_concurrent_downloads(self, max_concurrent: int):
+        """Set max concurrent downloads and enforce the limit immediately"""
+        old_value = self.max_concurrent_downloads
+        self.max_concurrent_downloads = max(1, max_concurrent)
+
+        # Update database
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE settings SET value = ? WHERE key = 'max_concurrent_downloads'",
+            (str(max_concurrent),)
+        )
+        conn.commit()
+        conn.close()
+
+        # If limit was reduced, enforce it by pausing excess downloads
+        if self.max_concurrent_downloads < old_value:
+            await self.enforce_concurrency_limit()
+
+    async def enforce_concurrency_limit(self):
+        """Pause excess downloads if over the max concurrent limit"""
+        # Get all currently downloading items
+        downloading = [d for d in self.downloads.values() if d.status == 'downloading']
+
+        # If we're over the limit, pause excess downloads (keep the first N)
+        if len(downloading) > self.max_concurrent_downloads:
+            # Sort by some order (could be start time, but we'll just use the order we find them)
+            # Keep the first max_concurrent_downloads, pause the rest
+            to_pause = downloading[self.max_concurrent_downloads:]
+
+            for download in to_pause:
+                print(f"Enforcing concurrency limit: pausing download {download.id}")
+                # Set paused flag and update status - this will make the download stop gracefully
+                download.paused = True
+                download.status = 'queued'  # Set to queued so it will resume when slot opens
+                download.speed_bps = 0
+                download.eta_seconds = 0
+                download.update_db()

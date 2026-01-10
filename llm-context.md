@@ -223,7 +223,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 48.01.02 Download Progress not working. Always shows 0 B / 0 B
    - [x] 48.01.03 Download Pause Button not working
    - [x] 48.01.04 Scroll bar dows not match styling
-- [ ] 48.02 Missing features:
+- [x] 48.02 Missing features:
    - [x] 48.02.01 Add the ability to intecept download links in the browser
    - [x] 48.02.02 Add the ability to pick a folder to download to like we do in the web-app when someone chooses to download with the context menu or manually enters a url in the extension popup
    - [x] 48.02.03 Add ability to pause all downloads (global pause button on main popup)
@@ -276,9 +276,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 48.02.05 | Added multi-select delete feature to Chrome extension popup: toolbar with select mode toggle, selection count with divider, Select All button, and Delete button. Moved URL input to folder picker modal. Add Download button pinned as 32x32 square on right. All toolbar buttons standardized to 28px height. Fixed Select All by forcing full re-render to update checkbox states. |
 | 48.02.06 | Added global rate limit settings modal to Chrome extension popup. Clicking the speed display in footer opens modal with rate limit input (value + unit selector for B/s, KB/s, MB/s). Modal loads current settings from server via GET /api/settings and saves via PATCH /api/settings. Added CSS styles for settings form elements matching extension design. |
 | 48.02.07 | Added max concurrent downloads setting to Chrome extension settings modal. Input field with validation (1-10 range). Updated loadServerSettings to populate value from server and saveServerSettings to save both rate limit and max concurrent in single PATCH request. |
+| 34.07-34.09 | Fixed three Phase 8 bugs: (1) 34.07 - _get_unique_filename now checks in-progress downloads for filename conflicts in same folder, preventing collisions when downloads complete. (2) 34.08 - Added set_max_concurrent_downloads() and enforce_concurrency_limit() methods to pause excess downloads when limit is reduced. (3) 34.09 - Converted webui download rows to card layout matching extension style: card header with checkbox/filename/icon buttons, 4px progress bar, info row with status badge/size/speed. Updated skeleton loaders and responsive CSS. |
 <!-- CONTEXT-END -->
 
 ---

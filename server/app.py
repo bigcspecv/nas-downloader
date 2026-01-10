@@ -309,7 +309,8 @@ def update_settings():
         if 'global_rate_limit_bps' in data:
             download_manager.global_rate_limit_bps = int(data['global_rate_limit_bps'])
         if 'max_concurrent_downloads' in data:
-            download_manager.max_concurrent_downloads = int(data['max_concurrent_downloads'])
+            # Use the async method to enforce the limit immediately
+            run_async(download_manager.set_max_concurrent_downloads(int(data['max_concurrent_downloads'])))
 
         # Broadcast settings change to all connected WebSocket clients
         broadcast_settings(settings)
