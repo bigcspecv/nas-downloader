@@ -8,18 +8,27 @@ let downloads = [];
 let globalPaused = false;
 let interceptEnabled = true; // Default to enabled
 
+// Icon animation state
+let animationInterval = null;
+let animationFrame = 0;
+const ANIMATION_FRAMES = 8;  // Number of frames in animation cycle
+const ANIMATION_SPEED = 150; // ms between frames
+let baseIconBitmap = null;   // Cached base icon for animation overlay
+
 // Initialize on install/startup
 chrome.runtime.onInstalled.addListener(() => {
     console.log('NAS Download Manager extension installed');
     createContextMenu();
     loadSettingsAndConnect();
     loadInterceptSetting();
+    loadBaseIcon();
 });
 
 chrome.runtime.onStartup.addListener(() => {
     console.log('Browser started, reconnecting...');
     loadSettingsAndConnect();
     loadInterceptSetting();
+    loadBaseIcon();
 });
 
 // Intercept browser downloads
@@ -209,6 +218,15 @@ function handleWebSocketMessage(message) {
         globalPaused = message.global_paused || false;
         console.log('Updated downloads array:', downloads.length, 'downloads, globalPaused:', globalPaused);
 
+        // Check if any downloads are actively downloading
+        const hasActiveDownloads = downloads.some(d => d.status === 'downloading');
+
+        if (hasActiveDownloads && !globalPaused) {
+            startIconAnimation();
+        } else {
+            stopIconAnimation();
+        }
+
         // Notify popup if it's open
         chrome.runtime.sendMessage({
             type: 'downloads_updated',
@@ -243,6 +261,11 @@ function handleWebSocketMessage(message) {
 // Update connection status
 function updateConnectionStatus(connected) {
     isConnected = connected;
+
+    // Stop animation when disconnected
+    if (!connected) {
+        stopIconAnimation();
+    }
 
     // Update badge
     chrome.action.setBadgeText({
@@ -450,5 +473,101 @@ async function resumeAllDownloads() {
         });
     } catch (error) {
         console.error('Failed to resume all downloads:', error);
+    }
+}
+
+// Load and cache the base icon for animation overlay
+async function loadBaseIcon() {
+    try {
+        const response = await fetch(chrome.runtime.getURL('icons/icon128.png'));
+        const blob = await response.blob();
+        baseIconBitmap = await createImageBitmap(blob);
+        console.log('Base icon loaded for animation overlay');
+    } catch (error) {
+        console.error('Failed to load base icon:', error);
+    }
+}
+
+// Generate animated icon frame with downward-moving arrow overlay
+function generateAnimatedIcon(frameIndex) {
+    const canvas = new OffscreenCanvas(128, 128);
+    const ctx = canvas.getContext('2d');
+
+    // Draw the original icon as base (if loaded)
+    if (baseIconBitmap) {
+        ctx.drawImage(baseIconBitmap, 0, 0, 128, 128);
+    } else {
+        // Fallback: draw gradient background if icon not loaded
+        const gradient = ctx.createLinearGradient(0, 0, 128, 128);
+        gradient.addColorStop(0, '#14b8a6');
+        gradient.addColorStop(1, '#0d9488');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 128, 128, 24);
+        ctx.fill();
+    }
+
+    // Calculate arrow position based on frame (moves from top to bottom)
+    // Arrow travels ~55 pixels so it starts at top and ends near bottom
+    const arrowOffset = (frameIndex / ANIMATION_FRAMES) * 55;
+
+    // Draw animated down arrow overlay (slightly larger)
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Add subtle shadow for visibility
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+
+    // Arrow shaft (centered, starts near top of icon)
+    const centerX = 64;
+    const baseY = 12 + arrowOffset;  // Start near top (12px from edge)
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, baseY);
+    ctx.lineTo(centerX, baseY + 55);  // Slightly longer shaft
+    ctx.stroke();
+
+    // Arrow head (slightly larger)
+    ctx.beginPath();
+    ctx.moveTo(centerX - 24, baseY + 38);
+    ctx.lineTo(centerX, baseY + 60);
+    ctx.lineTo(centerX + 24, baseY + 38);
+    ctx.stroke();
+
+    return ctx.getImageData(0, 0, 128, 128);
+}
+
+// Start icon animation
+function startIconAnimation() {
+    if (animationInterval) return; // Already animating
+
+    console.log('Starting icon animation');
+    animationInterval = setInterval(() => {
+        animationFrame = (animationFrame + 1) % ANIMATION_FRAMES;
+        const imageData = generateAnimatedIcon(animationFrame);
+        chrome.action.setIcon({ imageData: { 128: imageData } });
+    }, ANIMATION_SPEED);
+}
+
+// Stop icon animation and restore static icon
+function stopIconAnimation() {
+    if (animationInterval) {
+        console.log('Stopping icon animation');
+        clearInterval(animationInterval);
+        animationInterval = null;
+        animationFrame = 0;
+        // Restore static icon
+        chrome.action.setIcon({
+            path: {
+                16: 'icons/icon16.png',
+                48: 'icons/icon48.png',
+                128: 'icons/icon128.png'
+            }
+        });
     }
 }

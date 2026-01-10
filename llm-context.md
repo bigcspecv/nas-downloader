@@ -193,9 +193,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
    - [x] 34.04 The global rate limit in the UI does not reflect the actual value. It seems like anything less than 1MB/s is being shown as zero but zero MB/s should represent unlimited download speed. If the user selects 10KB/s or 10 B/s then they should see 10KB/s or 10B/s (respectively) the next time they open the settings modal.
    - [x] 34.05 We should name the temp download file something qunique like the ID from the DB until it completes so that if the server crashes the user can resume the download.
    - [x] 34.06 Update the pause button for individual downloads to show "Queued" when the download is queued.
-   - [ ] 34.07 If the user downloads a file that has the same name as an inprogress download, treat it the same way as we handle downloading files where a file with the same name exists in the download folder.
-   - [ ] 34.08 Fix bug in server where setting the max concurrent downloads while multple downloads are in progress does not change the total number of active downloads. For example if there are 5 active downloads the the user sets max concurrent downloads to 1 - all five remaon active. It should queue all but the top one in this example.
-   - [ ] 34.09 make the download card in the webui match the lok and feel of the download card in the extension. Do not make changes to the extension.
+   - [x] 34.07 If the user downloads a file that has the same name as an inprogress download, treat it the same way as we handle downloading files where a file with the same name exists in the download folder.
+   - [x] 34.08 Fix bug in server where setting the max concurrent downloads while multple downloads are in progress does not change the total number of active downloads. For example if there are 5 active downloads the the user sets max concurrent downloads to 1 - all five remaon active. It should queue all but the top one in this example.
+   - [x] 34.09 make the download card in the webui match the lok and feel of the download card in the extension. Do not make changes to the extension.
 
 ### Phase 9: UI Polish
 - [x] 35. Add loading states (spinners, skeleton screens)
@@ -276,9 +276,9 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 <!-- CONTEXT-START -->
 | Step | What happened |
 |------|---------------|
-| 48.02.06 | Added global rate limit settings modal to Chrome extension popup. Clicking the speed display in footer opens modal with rate limit input (value + unit selector for B/s, KB/s, MB/s). Modal loads current settings from server via GET /api/settings and saves via PATCH /api/settings. Added CSS styles for settings form elements matching extension design. |
 | 48.02.07 | Added max concurrent downloads setting to Chrome extension settings modal. Input field with validation (1-10 range). Updated loadServerSettings to populate value from server and saveServerSettings to save both rate limit and max concurrent in single PATCH request. |
 | 34.07-34.09 | Fixed three Phase 8 bugs: (1) 34.07 - _get_unique_filename now checks in-progress downloads for filename conflicts in same folder, preventing collisions when downloads complete. (2) 34.08 - Added set_max_concurrent_downloads() and enforce_concurrency_limit() methods to pause excess downloads when limit is reduced. (3) 34.09 - Converted webui download rows to card layout matching extension style: card header with checkbox/filename/icon buttons, 4px progress bar, info row with status badge/size/speed. Updated skeleton loaders and responsive CSS. |
+| ext+web | Added animated toolbar icon to Chrome extension (downward-moving arrow overlay using OffscreenCanvas when downloads active, restores static icon when idle). Fixed web UI progress bar transitions by rewriting renderDownloads() to update existing DOM elements in place instead of recreating innerHTML - preserves elements so CSS transition: width 1000ms works smoothly. |
 <!-- CONTEXT-END -->
 
 ---
@@ -302,6 +302,7 @@ The [llm-reference.md](llm-reference.md) file contains archived context and codi
 - Step 34.04: For numeric-only input fields, use type='text' with pattern='[0-9]*' and inputmode='numeric' instead of type='number'. Add inline oninput handler: this.value = this.value.replace(/[^0-9]/g, '') to immediately strip invalid characters. This prevents decimal entry without cursor jumping and provides better mobile keyboard support.
 - Step 39: When displaying real-time metrics like download speed, always detect stalls/disconnections by checking time since last update. If no new data for N seconds (e.g., 3s), reset displayed speed to 0. Without this, UI shows stale speed values that mislead users about connection status.
 - Step 48.02.02: When using flexbox layouts, duplicate CSS rules can override critical properties. Always check for duplicate selectors that may override flex-shrink, flex-grow, or other flex properties. In Chrome extensions, footer positioning requires proper flex-shrink: 0 on fixed elements to prevent them from following content height.
+- Step ext+web: CSS transitions (like progress bar width animations) only work when updating existing DOM elements. If you replace innerHTML on every update, you destroy the element and create a new one - there's nothing to transition from. Solution: update element properties in place (e.g., element.style.width = newValue) instead of recreating the HTML.
 <!-- LESSONS-END -->
 
 ---

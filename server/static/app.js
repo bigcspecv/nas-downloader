@@ -576,70 +576,198 @@ function renderDownloads() {
         return;
     }
 
-    container.innerHTML = filtered.map(download => {
-        const progress = download.progress || {};
-        const downloadedBytes = progress.downloaded_bytes || 0;
-        const totalBytes = progress.total_bytes || 0;
-        const percentage = progress.percentage || 0;
-        const speedBps = progress.speed_bps || 0;
+    // Get current card IDs in the DOM
+    const existingCards = container.querySelectorAll('.download-card[data-id]');
+    const existingIds = new Set();
+    existingCards.forEach(card => existingIds.add(card.dataset.id));
 
-        const progressClass = getProgressClass(download.status);
-        const isSelected = selectedDownloads.has(download.id);
-        const statusLabel = getStatusLabel(download.status);
+    // Get IDs from filtered downloads
+    const filteredIds = new Set(filtered.map(d => d.id));
 
-        return `
-            <div class="download-card ${isSelected ? 'selected' : ''}" data-id="${download.id}">
-                <div class="download-card-header">
-                    <div class="download-card-checkbox">
-                        <input type="checkbox" ${isSelected ? 'checked' : ''}
-                               onchange="toggleDownloadSelection('${download.id}', this.checked)">
-                    </div>
-                    <div class="download-card-title">
-                        <div class="download-card-filename" title="${escapeHtml(download.filename)}">
-                            ${escapeHtml(download.filename)}
-                        </div>
-                        ${download.folder ? `<div class="download-card-folder"><span class="icon-placeholder" data-icon="folder" data-class="icon"></span>${escapeHtml(download.folder)}</div>` : ''}
-                    </div>
-                    <div class="download-card-controls">
-                        ${download.status === 'downloading' ?
-                            `<button class="icon-btn" onclick="pauseDownload('${download.id}')" title="Pause">
-                                <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
-                            </button>` : ''}
-                        ${download.status === 'paused' ?
-                            `<button class="icon-btn" onclick="resumeDownload('${download.id}')" title="Resume">
-                                <span class="icon-placeholder" data-icon="play" data-class="icon"></span>
-                            </button>` : ''}
-                        <button class="icon-btn btn-danger" onclick="deleteDownload('${download.id}')" title="Delete">
-                            <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
-                        </button>
-                    </div>
-                </div>
-                <div class="download-card-progress">
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill ${progressClass}" style="width: ${percentage}%"></div>
-                    </div>
-                </div>
-                <div class="download-card-info">
-                    <div class="download-card-info-left">
-                        <span class="download-card-status ${download.status}">${statusLabel}</span>
-                        <span class="download-card-size">${formatBytes(downloadedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : '?'}</span>
-                    </div>
-                    <span class="download-card-speed ${speedBps > 0 ? '' : 'inactive'}">
-                        ${speedBps > 0 ? formatSpeed(speedBps) : ''}
-                    </span>
-                </div>
-                ${download.status === 'failed' && download.error_message ?
-                    `<div class="download-card-error">
-                        <span class="icon-placeholder" data-icon="exclamation-triangle" data-class="icon"></span>
-                        ${escapeHtml(download.error_message)}
-                    </div>` : ''}
-            </div>
-        `;
-    }).join('');
+    // Remove cards that are no longer in the filtered list
+    existingCards.forEach(card => {
+        if (!filteredIds.has(card.dataset.id)) {
+            card.remove();
+        }
+    });
+
+    // Remove empty state if it exists
+    const emptyState = container.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    // Update or create cards for each download
+    filtered.forEach((download, index) => {
+        const existingCard = container.querySelector(`.download-card[data-id="${download.id}"]`);
+
+        if (existingCard) {
+            // Update existing card in place (preserves DOM for transitions)
+            updateDownloadCard(existingCard, download);
+        } else {
+            // Create new card
+            const newCard = createDownloadCard(download);
+            // Insert at correct position
+            const cards = container.querySelectorAll('.download-card');
+            if (index < cards.length) {
+                container.insertBefore(newCard, cards[index]);
+            } else {
+                container.appendChild(newCard);
+            }
+            initializeIcons(newCard);
+        }
+    });
 
     updateSelectAllCheckbox();
     updateDeleteButton();
-    initializeIcons(container);
+}
+
+function createDownloadCard(download) {
+    const progress = download.progress || {};
+    const downloadedBytes = progress.downloaded_bytes || 0;
+    const totalBytes = progress.total_bytes || 0;
+    const percentage = progress.percentage || 0;
+    const speedBps = progress.speed_bps || 0;
+    const progressClass = getProgressClass(download.status);
+    const isSelected = selectedDownloads.has(download.id);
+    const statusLabel = getStatusLabel(download.status);
+
+    const card = document.createElement('div');
+    card.className = `download-card ${isSelected ? 'selected' : ''}`;
+    card.dataset.id = download.id;
+
+    card.innerHTML = `
+        <div class="download-card-header">
+            <div class="download-card-checkbox">
+                <input type="checkbox" ${isSelected ? 'checked' : ''}
+                       onchange="toggleDownloadSelection('${download.id}', this.checked)">
+            </div>
+            <div class="download-card-title">
+                <div class="download-card-filename" title="${escapeHtml(download.filename)}">
+                    ${escapeHtml(download.filename)}
+                </div>
+                ${download.folder ? `<div class="download-card-folder"><span class="icon-placeholder" data-icon="folder" data-class="icon"></span>${escapeHtml(download.folder)}</div>` : ''}
+            </div>
+            <div class="download-card-controls">
+                ${download.status === 'downloading' ?
+                    `<button class="icon-btn" onclick="pauseDownload('${download.id}')" title="Pause">
+                        <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
+                    </button>` : ''}
+                ${download.status === 'paused' ?
+                    `<button class="icon-btn" onclick="resumeDownload('${download.id}')" title="Resume">
+                        <span class="icon-placeholder" data-icon="play" data-class="icon"></span>
+                    </button>` : ''}
+                <button class="icon-btn btn-danger" onclick="deleteDownload('${download.id}')" title="Delete">
+                    <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
+                </button>
+            </div>
+        </div>
+        <div class="download-card-progress">
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill ${progressClass}" style="width: ${percentage}%"></div>
+            </div>
+        </div>
+        <div class="download-card-info">
+            <div class="download-card-info-left">
+                <span class="download-card-status ${download.status}">${statusLabel}</span>
+                <span class="download-card-size">${formatBytes(downloadedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : '?'}</span>
+            </div>
+            <span class="download-card-speed ${speedBps > 0 ? '' : 'inactive'}">
+                ${speedBps > 0 ? formatSpeed(speedBps) : ''}
+            </span>
+        </div>
+        ${download.status === 'failed' && download.error_message ?
+            `<div class="download-card-error">
+                <span class="icon-placeholder" data-icon="exclamation-triangle" data-class="icon"></span>
+                ${escapeHtml(download.error_message)}
+            </div>` : ''}
+    `;
+
+    return card;
+}
+
+function updateDownloadCard(card, download) {
+    const progress = download.progress || {};
+    const downloadedBytes = progress.downloaded_bytes || 0;
+    const totalBytes = progress.total_bytes || 0;
+    const percentage = progress.percentage || 0;
+    const speedBps = progress.speed_bps || 0;
+    const progressClass = getProgressClass(download.status);
+    const isSelected = selectedDownloads.has(download.id);
+    const statusLabel = getStatusLabel(download.status);
+
+    // Update selection state
+    card.classList.toggle('selected', isSelected);
+    const checkbox = card.querySelector('.download-card-checkbox input');
+    if (checkbox) checkbox.checked = isSelected;
+
+    // Update progress bar (this is the key part for smooth transitions)
+    const progressBar = card.querySelector('.progress-bar-fill');
+    if (progressBar) {
+        progressBar.style.width = percentage + '%';
+        progressBar.className = 'progress-bar-fill ' + progressClass;
+    }
+
+    // Update status badge
+    const statusEl = card.querySelector('.download-card-status');
+    if (statusEl) {
+        statusEl.className = 'download-card-status ' + download.status;
+        statusEl.textContent = statusLabel;
+    }
+
+    // Update size
+    const sizeEl = card.querySelector('.download-card-size');
+    if (sizeEl) {
+        sizeEl.textContent = `${formatBytes(downloadedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : '?'}`;
+    }
+
+    // Update speed
+    const speedEl = card.querySelector('.download-card-speed');
+    if (speedEl) {
+        speedEl.className = 'download-card-speed ' + (speedBps > 0 ? '' : 'inactive');
+        speedEl.textContent = speedBps > 0 ? formatSpeed(speedBps) : '';
+    }
+
+    // Update controls if status changed (pause/resume buttons)
+    const controlsEl = card.querySelector('.download-card-controls');
+    if (controlsEl) {
+        const currentHasPause = !!controlsEl.querySelector('[title="Pause"]');
+        const currentHasResume = !!controlsEl.querySelector('[title="Resume"]');
+        const needsPause = download.status === 'downloading';
+        const needsResume = download.status === 'paused';
+
+        if (currentHasPause !== needsPause || currentHasResume !== needsResume) {
+            controlsEl.innerHTML = `
+                ${download.status === 'downloading' ?
+                    `<button class="icon-btn" onclick="pauseDownload('${download.id}')" title="Pause">
+                        <span class="icon-placeholder" data-icon="pause" data-class="icon"></span>
+                    </button>` : ''}
+                ${download.status === 'paused' ?
+                    `<button class="icon-btn" onclick="resumeDownload('${download.id}')" title="Resume">
+                        <span class="icon-placeholder" data-icon="play" data-class="icon"></span>
+                    </button>` : ''}
+                <button class="icon-btn btn-danger" onclick="deleteDownload('${download.id}')" title="Delete">
+                    <span class="icon-placeholder" data-icon="trash" data-class="icon"></span>
+                </button>
+            `;
+            initializeIcons(controlsEl);
+        }
+    }
+
+    // Update error message
+    const existingError = card.querySelector('.download-card-error');
+    if (download.status === 'failed' && download.error_message) {
+        if (!existingError) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'download-card-error';
+            errorDiv.innerHTML = `
+                <span class="icon-placeholder" data-icon="exclamation-triangle" data-class="icon"></span>
+                ${escapeHtml(download.error_message)}
+            `;
+            card.appendChild(errorDiv);
+            initializeIcons(errorDiv);
+        }
+    } else if (existingError) {
+        existingError.remove();
+    }
 }
 
 function getStatusLabel(status) {
