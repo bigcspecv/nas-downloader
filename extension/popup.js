@@ -68,7 +68,7 @@ function setupEventListeners() {
 
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', openOptions);
+        settingsBtn.addEventListener('click', openSettingsModal);
     }
 
     // Pause all button
